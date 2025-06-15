@@ -50,7 +50,7 @@ $page_title  = str_replace("%%term_title%%",$current_term->name,$page_title);
     if ( is_category() ) {
 ?>
     <section class="layout">
-        <div class="post-single__body prose py-single 2xl:py-half px-half mx-auto lg:px-0">
+        <div class="post-single__body prose py-single 2xl:py-half px-half mx-auto lg:px-0 fade-up">
             <?php if ( !empty( category_description() ) ) {
                 echo category_description();
             } else {
@@ -64,7 +64,7 @@ $page_title  = str_replace("%%term_title%%",$current_term->name,$page_title);
     } else if ( is_tax("language") ) {
 ?>
     <section class="layout">
-        <div class="post-single__body prose 2xl:py-half px-half mx-auto lg:px-0">
+        <div class="post-single__body prose 2xl:py-half px-half mx-auto lg:px-0 fade-up">
             <?php if ( !empty( category_description() ) ) {
                 echo category_description();
             } else {
@@ -79,7 +79,7 @@ $page_title  = str_replace("%%term_title%%",$current_term->name,$page_title);
     } else if ( is_tax("country") ) {
 ?>
     <section class="layout">
-        <div class="post-single__body prose 2xl:py-half px-half mx-auto lg:px-0">
+        <div class="post-single__body prose 2xl:py-half px-half mx-auto lg:px-0 fade-up">
             <?php if ( !empty( category_description() ) ) {
                 echo category_description();
             } else {
@@ -94,7 +94,7 @@ $page_title  = str_replace("%%term_title%%",$current_term->name,$page_title);
     } else if ( is_tax("industry") ) {
 ?>
     <section class="layout">
-        <div class="post-single__body prose 2xl:py-half px-half mx-auto lg:px-0">
+        <div class="post-single__body prose 2xl:py-half px-half mx-auto lg:px-0 fade-up">
             <?php if ( !empty( category_description() ) ) {
                 echo category_description();
             } else {
@@ -110,7 +110,7 @@ $page_title  = str_replace("%%term_title%%",$current_term->name,$page_title);
 ?>
 
 <?php if (have_posts()) { ?>
-    <section class="layout pt-0">
+    <section class="layout pt-0 fade-up">
         <h2><?php echo single_term_title("",false) ?> Insights</h2>
     </section>
 <section class="layout post-archive pt-0">

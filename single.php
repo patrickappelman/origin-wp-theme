@@ -40,7 +40,7 @@ global $post;
     </div>
   </header>
 
-  <div class="post-single__body prose py-double 2xl:py-single px-half mx-auto lg:px-0">
+  <div class="post-single__body prose py-double 2xl:py-single px-half mx-auto lg:px-0 fade-up">
     <?php the_content(); ?>
   </div>
 
