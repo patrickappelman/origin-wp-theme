@@ -183,8 +183,21 @@ document.addEventListener("DOMContentLoaded", () => {
 		}
 	);
 
+	// Get viewport height
+	const viewportHeight = window.innerHeight;
+
+	// Select all elements with fade-up class
 	document.querySelectorAll(".fade-up").forEach((el) => {
-		fadeUpObserver.observe(el);
+		// Get element's position relative to the viewport
+		const rect = el.getBoundingClientRect();
+
+		// If element is above or partially in the initial viewport, apply fade immediately
+		if (rect.top < viewportHeight && rect.bottom > 0) {
+			el.classList.add("fade-up--faded");
+		} else {
+			// Observe elements below the fold
+			fadeUpObserver.observe(el);
+		}
 	});
 });
 
