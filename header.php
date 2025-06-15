@@ -81,7 +81,7 @@
           </div>
 
           <div class="pulser">
-              <a target="_blank" class="pulser__button button" href="https://origin-recruitment.zohorecruit.eu/jobs/jobs">Explore Jobs</a>
+              <a class="pulser__button button" href="/jobs/">Explore Jobs</a>
               <span class="pulser__pulse-wrapper">
                 <span class="pulser__pulse-group">
                   <span class="pulser__pulse-outer"></span>
@@ -290,9 +290,8 @@
             </li>
             <li>
               <a
-                target="_blank"
                 class="sidebar-nav__link bg-gold hover:bg-gold-dark focus:bg-gold-dark mt-button-y text-white"
-                href="https://origin-recruitment.zohorecruit.eu/jobs/jobs"
+                href="/jobs/"
                 ><svg
                   class="size-4 lucide lucide-search-icon lucide-search"
                   xmlns="http://www.w3.org/2000/svg"

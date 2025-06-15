@@ -5,7 +5,7 @@
             <p class="leading-relaxed text-[var(--color-white-default)]">We are committed to providing the service we offer to the highest standards. Candidates who are looking for a multilingual job with languages trust us to listen to them, understand their expectations and help them to find their ideal job that can utilise their language skills.</p>
             <div>
                 <a target="_blank" href="https://origin-recruitment.zohorecruit.eu/forms/8f976ca50e1d49e7f6ed6409a4d6d971498d3a8209b75bd4d872aa5ec6d872f3" class="button mr-1 mb-2">Upload Your CV</a>
-                <a target="_blank" href="https://origin-recruitment.zohorecruit.eu/jobs/jobs" class="button button--outline button--light mb-2">Explore Jobs</a>
+                <a href="/jobs/" class="button button--outline button--light mb-2">Explore Jobs</a>
             </div>
             <p><a href="/candidates/" class="text-white-bold hover:underline">How our recruitment process works →</a></p>
         </div>
