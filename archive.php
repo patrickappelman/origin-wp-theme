@@ -3,28 +3,52 @@
 <?php
 // GET DEFAULTS
 
-$current_term = get_queried_object();
-// var_dump($current_term);
+if ( is_tax() || is_category() || is_tag() ) {
+    $term = get_queried_object();
+    $taxonomy = $term->taxonomy;
+    $term_id = $term->term_id;
 
-$arr_default_seo_titles = get_option('wpseo_titles');
+    // Get Rank Math taxonomy meta for term-specific SEO title
+    $rank_math_meta = get_option( 'rank_math_taxonomy_meta' );
+    $seo_title = isset( $rank_math_meta[$taxonomy][$term_id]['title'] ) ? $rank_math_meta[$taxonomy][$term_id]['title'] : '';
 
-$seo_title = WPSEO_Taxonomy_Meta::get_term_meta($current_term->term_id, $current_term->taxonomy, 'title');
-$default_seo_title = $arr_default_seo_titles['title-tax-' . $current_term->taxonomy];
+    // If no term-specific title, check the taxonomy's title template
+    if ( empty( $seo_title ) ) {
+        $rank_math_options = get_option( 'rank-math-options-titles' );
 
-// var_dump($arr_default_seo_titles['title-tax-' . $current_term->taxonomy]);
+        $title_template = isset( $rank_math_options['tax_' . $taxonomy . '_title'] ) ? $rank_math_options['tax_' . $taxonomy . '_title'] : '';
+        
+        if ( ! empty( $title_template ) ) {
 
-if ( !empty( $seo_title ) ) {
-    $page_title  = $seo_title;
-} else if ( !empty( $default_seo_title ) ) {
-    $page_title  = $default_seo_title;
-} else {
-    $page_title  = get_the_archive_title();
+            $seo_title = $title_template;
+        }
+    }
+
+    // Process Rank Math variables (e.g., %term%, %sep%)
+    if ( ! empty( $seo_title ) ) {
+
+        $seo_title = str_replace( "%sitename%", "", $seo_title );
+        $seo_title = str_replace( "%sep%", "", $seo_title );
+        $seo_title = str_replace( "%page%", "", $seo_title );
+        $seo_title = trim($seo_title);
+        
+        if ( class_exists( 'RankMath\Helper' ) ) {
+            // Check if Rank Math Helper class
+            $seo_title = RankMath\Helper::replace_vars( $seo_title, $term );
+        } else {
+            // Fallback if Rank Math Helper class is unavailable
+            $seo_title = str_replace( '%term%', $term->name, $seo_title );
+        }
+    }
+
+    // Final fallback to default term title
+    if ( !empty( $seo_title ) ) {
+        $page_title = $seo_title;
+    } else {
+        $page_title  = get_the_archive_title();
+    }
+
 }
-
-$page_title  = str_replace("%%sitename%%","",$page_title);
-$page_title  = str_replace("%%sep%%","",$page_title);
-$page_title  = str_replace("%%page%%","",$page_title);
-$page_title  = str_replace("%%term_title%%",$current_term->name,$page_title);
 
 ?>
 
