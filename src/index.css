@@ -8,6 +8,10 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
+@utility no-scrollbar {
+	@apply [scrollbar-width:none] [&::-webkit-scrollbar]:hidden;
+}
+
 @theme {
 	--breakpoint-2xl: 120rem !important;
 	--leading-tight: 1.2;
@@ -339,6 +343,31 @@
 		}
 	}
 
+	/* BREADCRUMBS */
+
+	.breadcrumbs {
+		@apply bg-[#F5F5F5] dark:bg-[#222222] text-sm h-12.5 flex align-middle;
+
+		nav.rank-math-breadcrumb {
+			@apply px-half md:px-double mx-auto max-w-640 my-auto w-full overflow-x-scroll text-nowrap no-scrollbar;
+			/* margin: auto 0; */
+		}
+
+		nav.rank-math-breadcrumb p {
+			@apply flex gap-2;
+		}
+
+		a {
+			@apply text-gold;
+		}
+		span.separator {
+			@apply inline-block;
+		}
+		span.last {
+			/* @apply line-clamp-1; */
+		}
+	}
+
 	/* FOOTER */
 
 	.footer {
@@ -657,19 +686,30 @@
 		@apply text-gray-bold dark:text-white-bold font-bold;
 	}
 
-	.job-single__details-list i,
-	.job-listing__details-list i {
-		@apply mr-1;
+	.job-single__details-list dd,
+	.job-listing__details-list li {
+		@apply flex flex-row gap-3;
+	}
+
+	.job-single__details-list dd i,
+	.job-listing__details-list li i {
+		@apply pt-1;
 	}
 
 	/* Job Listing */
 
 	.job-listing {
-		@apply mb-single;
+		@apply mb-single last:mb-0;
 
 		&:last-child {
 			@apply mb-0;
 		}
+	}
+
+	.job-listing__meta-row {
+		@apply mb-2.5 line-clamp-1 flex flex-row;
+		font-size: calc(var(--text-base) * 0.875);
+		gap: calc(var(--spacing-half) * 0.5);
 	}
 }
 
@@ -748,4 +788,68 @@
 
 .contact-section__name-column {
 	@apply w-full lg:w-1/2;
+}
+
+/* ALERTS */
+
+.alert-solid {
+	@apply mt-2 bg-gray-500 text-sm text-white p-4;
+
+	&.alert-solid--secondary {
+		@apply bg-gray-500 text-white;
+	}
+
+	&.alert-solid--info {
+		@apply bg-blue-600 text-white dark:bg-blue-500;
+	}
+
+	&.alert-solid--success {
+		@apply bg-teal-500 text-white;
+	}
+
+	&.alert-solid--danger {
+		@apply bg-red-500 text-white;
+	}
+
+	&.alert-solid--warning {
+		@apply bg-yellow-500 text-white;
+	}
+}
+
+.alert-soft {
+	@apply mt-2 bg-gray-50 border border-gray-200 text-sm text-gray-600 p-4 dark:bg-white/10 dark:border-white/10 dark:text-neutral-400;
+
+	&.alert-soft--secondary {
+		@apply bg-gray-50 border-gray-200 text-gray-600 dark:bg-white/10 dark:border-white/10 dark:text-neutral-400;
+	}
+
+	&.alert-soft--info {
+		@apply bg-blue-100 border border-blue-200 text-blue-800 dark:bg-blue-800/10 dark:border-blue-900 dark:text-blue-500;
+	}
+
+	&.alert-soft--success {
+		@apply bg-teal-100 border border-teal-200 text-teal-800 dark:bg-teal-800/10 dark:border-teal-900 dark:text-teal-500;
+	}
+
+	&.alert-soft--danger {
+		@apply bg-red-100 border border-red-200 text-red-800 dark:bg-red-800/10 dark:border-red-900 dark:text-red-500;
+	}
+
+	&.alert-soft--warning {
+		@apply bg-yellow-100 border border-yellow-200 text-yellow-800 dark:bg-yellow-800/10 dark:border-yellow-900 dark:text-yellow-500;
+	}
+}
+
+/* PAGINATION */
+
+.pagination {
+	@apply flex items-center gap-x-1 mt-single;
+}
+
+.page-numbers {
+	@apply min-h-9.5 min-w-9.5 flex justify-center items-center border border-transparent text-gray-800 hover:bg-gray-100 py-2 px-3 text-sm focus:outline-hidden focus:bg-gray-100 disabled:opacity-50 disabled:pointer-events-none dark:border-transparent dark:text-white dark:hover:bg-white/10 dark:focus:bg-white/10;
+}
+
+.page-numbers.current {
+	@apply border-gray-200 text-gray-800 hover:bg-transparent dark:border-neutral-700 dark:text-white dark:focus:bg-white/10;
 }

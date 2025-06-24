@@ -1,5 +1,13 @@
 <?php get_header(); ?>
 
+<?php 
+	if ( function_exists( 'rank_math_the_breadcrumbs' ) ) { 
+		echo "<div class='breadcrumbs'>";
+		rank_math_the_breadcrumbs();
+		echo "</div>";
+	}
+?>
+
 <div class="hero hero--small">
     <div class="hero__container">
         <h1 class="reverse text-display-5 fade-up w-full md:w-3/4 lg:w-1/2"><?php the_title(); ?></h1>
@@ -8,7 +16,7 @@
 <section class="layout gap-double lg:gap-single flex w-full flex-col lg:flex-row-reverse">
 
     <aside class="w-full lg:w-1/3">
-        <div class="job-single__details p-single text-gray-default dark:text-white-default bg-[#eee] dark:bg-[#222222]">
+        <div class="job-single__details p-single text-gray-default dark:text-white-default bg-[#f5f5f5] dark:bg-[#222222]">
             <div class="pb-half">
                 <label for="search" class="hidden">Search all jobs</label>
                 <input type="text" class="py-2.5 text-sm sm:py-3 px-4 block w-full border-gray-200 focus:border-blue-500 focus:ring-blue-500 disabled:opacity-50 disabled:pointer-events-none dark:bg-neutral-900 dark:border-neutral-700 dark:text-neutral-400 placeholder-gray-dim dark:placeholder-white-dim dark:focus:ring-neutral-600" placeholder="Search all jobs">
@@ -59,9 +67,12 @@
     <section class="w-full lg:w-2/3">
 
 <?php
-// construct the query arguments
+$paged = (get_query_var('paged')) ? get_query_var('paged') : 1;
 $args = array(
-    'post_type' => 'job'
+    'post_type' => 'job',
+    'posts_per_page' => 10,
+    'nopaging' => false,
+    'paged' => $paged
 );
 
 $loop = new WP_Query( $args );
@@ -70,42 +81,157 @@ while ( $loop->have_posts() ) {
 
     $loop->the_post();
 
+    $arr_job_status = array(
+      'In-progress' => array(
+        'alert-type' => 'success',
+        'can-apply' => true,
+        'msg' => 'This job is now accepting applications.'
+      ),
+      'Filled' => array(
+        'alert-type' => 'danger',
+        'can-apply' => false,
+        'msg' => 'This job has been filled.'
+      ),
+      'Cancelled' => array(
+        'alert-type' => 'danger',
+        'can-apply' => false,
+        'msg' => 'This job is no longer available.'
+      ),
+      'Declined' => array(
+        'alert-type' => 'danger',
+        'can-apply' => false,
+        'msg' => 'This job is no longer available.'
+      ),
+      'Inactive' => array(
+        'alert-type' => 'danger',
+        'can-apply' => false,
+        'msg' => 'This job is no longer available.'
+      ),
+      'Submitted by client' => array(
+        'alert-type' => 'warning',
+        'can-apply' => false,
+        'msg' => 'This job is no longer available.'
+      ),
+    );
+    
+    $job_status = get_field( "job_opening_status" );
+
 ?>
 
-<article class="job-listing p-single text-gray-default dark:text-white-default bg-[#eee] dark:bg-[#222222]">
+<article class="job-listing p-single text-gray-default dark:text-white-default bg-[#f5f5f5] dark:bg-[#222222]">
+    <?php if ( !$arr_job_status[$job_status]['can-apply'] ) { ?>
+      <div class="alert-soft <?php echo "alert-soft--" . $arr_job_status[$job_status]['alert-type'] ?> mb-half" role="alert" tabindex="-1" aria-labelledby="job-status-label">
+        <span id="job-status-label" class="font-bold">Job Status:</span> <?php echo $arr_job_status[$job_status]['msg'] ?>
+      </div>
+    <?php } ?>
+    <div class="job-listing__meta-row"><time datetime="<?php echo get_the_date("Y-m-d"); ?>">Posted on <?php echo get_the_date("F j, Y"); ?></time></div>
     <h3 class="job-listing__title mb-single 2xl:mb-half"><?php the_title(); ?></h3>
     <ul class="job-listing__details-list gap-single xl:gap-half mb-single 2xl:mb-half grid grid-cols-2">
         <li>
             <i class="fa-solid fa-fw fa-globe" alt="Languages"></i>
-            Korean
+            <?php
+                $arr_language_terms = get_the_terms( get_the_ID(), 'language' );
+                $arr_languages = [];
+                $languages = "";
+
+                if ( !empty( $arr_language_terms ) ) {
+                  foreach ($arr_language_terms as $language_term) {
+                    $arr_languages[] = $language_term->name;
+                  }
+                }
+
+                if ( !empty( $arr_language_terms ) ) {
+                  $languages = implode(", ", $arr_languages);
+                }
+
+                echo $languages;
+              ?>
         </li>
         <li>
             <i class="fa-solid fa-fw fa-location-dot" alt="Location"></i>
-            London, United Kingdom
+            <?php
+                $arr_country_terms = get_the_terms( get_the_ID(), 'country' );
+                $arr_location = [];
+                $location = "";
+                
+                if ( !empty( get_field( "city" ) ) ) {
+                  $arr_location["city"] = get_field( "city" );
+                }
+
+                // if ( !empty( get_field( "state" ) ) ) {
+                //   $arr_location["state"] = get_field( "state" );
+                // }
+
+                if ( !empty( $arr_country_terms ) ) {
+                  // $arr_location["country"] = $arr_country_terms[0]->name;
+                  $arr_location["country"] = $arr_country_terms[0]->name;
+                }
+
+                if ( !empty( $arr_location ) ) {
+                  $location = implode(", ", $arr_location);
+                }
+
+                if ( get_field( "remote_job" ) ) {
+                  $location = "Remote";
+                }
+
+                echo $location;
+              ?>
         </li>
         <li>
             <i class="fa-solid fa-fw fa-building" alt="Industry"></i>
-            Sales - Marketing
+            <?php
+                $arr_industry_terms = get_the_terms( get_the_ID(), 'industry' );
+                $arr_industries = [];
+                $industries = "";
+
+                if ( !empty( $arr_industry_terms ) ) {
+                  foreach ($arr_industry_terms as $industry_term) {
+                    $arr_industries[] = $industry_term->name;
+                  }
+                }
+
+                if ( !empty( $arr_industry_terms ) ) {
+                  $industries = implode(", ", $arr_industries);
+                }
+
+                echo $industries;
+              ?>
         </li>
         <li>
             <i class="fa-solid fa-fw fa-briefcase" alt="Employment Type"></i>
-            Full Time
+            <?php echo get_field( "job_type" ); ?>
         </li>
-        <li>
+        <li class="col-span-2">
             <i class="fa-solid fa-fw fa-money-bills" alt="Salary"></i>
-            £42,000+
+            <?php echo get_field( "salary" ); ?>
         </li>
     </ul>
     <div>
+        <?php if ( $arr_job_status[$job_status]['can-apply'] ) { ?>
         <a href="<?php echo get_the_permalink(); ?>#Apply" class="button mr-2.5"><i class="fa-solid fa-pen-to-square"></i> Apply Now</a>
+        <?php } ?>
         <a href="<?php echo get_the_permalink(); ?>" class="button button--outline">View full listing</a>
     </div>
 </article>
 
-<?php
+<?php } ?>
 
-}
-?>      
+<div class="pagination">
+    <?php
+    echo paginate_links(array(
+        'base' => str_replace(999999999, '%#%', esc_url(get_pagenum_link(999999999))),
+        'format' => '?paged=%#%',
+        'current' => max(1, $paged),
+        'total' => $loop->max_num_pages,
+        'prev_text' => __('« Previous'),
+        'next_text' => __('Next »'),
+    ));
+    ?>
+</div>
+
+<?php wp_reset_postdata(); ?>
+
     </section>
 </section>
 

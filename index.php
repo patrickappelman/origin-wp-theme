@@ -2,6 +2,14 @@
 
 get_header(); ?>
 
+<?php 
+	if ( function_exists( 'rank_math_the_breadcrumbs' ) ) { 
+		echo "<div class='breadcrumbs'>";
+		rank_math_the_breadcrumbs();
+		echo "</div>";
+	}
+?>
+
 <div class="max-w-4xl mx-auto px-4">
 
   <!-- example react component -->

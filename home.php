@@ -1,6 +1,14 @@
 <?php get_header(); ?>
 
 <?php 
+	if ( function_exists( 'rank_math_the_breadcrumbs' ) ) { 
+		echo "<div class='breadcrumbs'>";
+		rank_math_the_breadcrumbs();
+		echo "</div>";
+	}
+?>
+
+<?php 
 $thumbnail = get_the_post_thumbnail(96);
 
 if($thumbnail) {

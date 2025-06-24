@@ -92,12 +92,12 @@ document.addEventListener("DOMContentLoaded", () => {
 	});
 });
 
-// STICKY JOB PANEL
+// STICKY PANEL
 
 document.addEventListener("DOMContentLoaded", () => {
-	const sidebarDetails = document.querySelector(".job-single__details");
-	const sidebar = document.querySelector(".job-single__sidebar");
-	const contentContainer = document.querySelector(".job-single__description");
+	const sidebarDetails = document.querySelector(".sticky__sidebar-details");
+	const sidebar = document.querySelector(".sticky__sidebar");
+	const contentContainer = document.querySelector(".sticky__content");
 
 	if (!sidebarDetails || !sidebar || !contentContainer) return;
 
@@ -246,45 +246,47 @@ function initMarquee() {
 	let speed = 1; // Pixels per frame
 	let position = 0;
 
-	// Duplicate logos in JavaScript for seamless scrolling
-	const logos = companyCarouselList.innerHTML;
-	const duplicateContent = document.createElement("ul");
-	duplicateContent.classList.add("company-carousel__list", "flex");
-	duplicateContent.innerHTML = logos;
-	duplicateContent.setAttribute("aria-hidden", "true");
-	marquee.appendChild(duplicateContent);
+	if (companyCarouselList) {
+		// Duplicate logos in JavaScript for seamless scrolling
+		const logos = companyCarouselList.innerHTML;
+		const duplicateContent = document.createElement("ul");
+		duplicateContent.classList.add("company-carousel__list", "flex");
+		duplicateContent.innerHTML = logos;
+		duplicateContent.setAttribute("aria-hidden", "true");
+		marquee.appendChild(duplicateContent);
 
-	// Responsive width adjustments
-	const updateMarqueeWidth = () => {
-		const width = window.innerWidth;
-		let visibleLogos = 6; // Desktop default
-		if (width < 640) {
-			visibleLogos = 2; // Mobile
-		} else if (width < 1024) {
-			visibleLogos = 4; // Tablet
+		// Responsive width adjustments
+		const updateMarqueeWidth = () => {
+			const width = window.innerWidth;
+			let visibleLogos = 6; // Desktop default
+			if (width < 640) {
+				visibleLogos = 2; // Mobile
+			} else if (width < 1024) {
+				visibleLogos = 4; // Tablet
+			}
+			marquee.style.width = `${visibleLogos * (150 + 32)}px`; // Logo width (150) + margin (32)
+		};
+
+		// Initial width setup
+		updateMarqueeWidth();
+		window.addEventListener("resize", updateMarqueeWidth);
+
+		// Animation loop
+		function scroll() {
+			position -= speed;
+			marquee.style.transform = `translateX(${position}px)`;
+
+			// Reset position when first set of logos is fully out of view
+			if (Math.abs(position) >= companyCarouselList.offsetWidth) {
+				position = 0;
+			}
+
+			requestAnimationFrame(scroll);
 		}
-		marquee.style.width = `${visibleLogos * (150 + 32)}px`; // Logo width (150) + margin (32)
-	};
 
-	// Initial width setup
-	updateMarqueeWidth();
-	window.addEventListener("resize", updateMarqueeWidth);
-
-	// Animation loop
-	function scroll() {
-		position -= speed;
-		marquee.style.transform = `translateX(${position}px)`;
-
-		// Reset position when first set of logos is fully out of view
-		if (Math.abs(position) >= companyCarouselList.offsetWidth) {
-			position = 0;
-		}
-
+		// Start animation
 		requestAnimationFrame(scroll);
 	}
-
-	// Start animation
-	requestAnimationFrame(scroll);
 }
 
 // Initialize marquee when DOM is loaded
