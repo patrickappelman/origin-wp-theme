@@ -1,21 +1,21 @@
 <?php
 /**
- * Template Name: Custom Registration
- * Path: wp-content/themes/origin/page-register.php
+ * Template Name: User Profile
+ * Path: wp-content/themes/origin/page-user-profile.php
  */
 
 // Buffer output to prevent headers issues
 ob_start();
 
-error_log( 'Custom Registration: Page loaded' );
+error_log( 'User Profile: Page loaded' );
 
-if ( is_user_logged_in() ) {
-	error_log( 'Custom Registration: User already logged in, redirecting to profile' );
-	wp_redirect( home_url( '/profile/' ) );
+if ( ! is_user_logged_in() ) {
+	error_log( 'User Profile: User not logged in, redirecting to login' );
+	wp_redirect( home_url( '/login/' ) );
 	exit;
 }
 
-// Get ACF field groups for users
+$current_user = wp_get_current_user();
 $field_groups = acf_get_field_groups( [ 'user_form' => 'all' ] );
 $acf_fields_by_group = [];
 $excluded_fields = [ 'candidate_id', 'id' ]; // Fields to exclude from rendering
@@ -30,17 +30,15 @@ foreach ( $field_groups as $group ) {
 $errors = [];
 $success = '';
 
-if ( isset( $_POST['register_submit'] ) ) {
-	error_log( 'Custom Registration: Form submission detected with POST: ' . print_r( $_POST, true ) );
-	if ( ! wp_verify_nonce( $_POST['_wpnonce'], 'custom_register' ) ) {
+if ( isset( $_POST['profile_submit'] ) ) {
+	error_log( 'User Profile: Form submission detected with POST: ' . print_r( $_POST, true ) );
+	if ( ! wp_verify_nonce( $_POST['_wpnonce'], 'custom_profile' ) ) {
 		$errors[] = 'Invalid or expired form submission.';
-		error_log( 'Custom Registration: Invalid nonce' );
+		error_log( 'User Profile: Invalid nonce' );
 	} else {
 		$first_name = sanitize_text_field( $_POST['first_name'] ?? '' );
 		$last_name = sanitize_text_field( $_POST['last_name'] ?? '' );
 		$user_email = sanitize_email( $_POST['user_email'] ?? '' );
-		$user_password = $_POST['user_password'] ?? '';
-		$username = sanitize_user( $user_email, true ); // Set username to email
 
 		// Validation for core fields
 		if ( empty( $first_name ) ) {
@@ -53,16 +51,8 @@ if ( isset( $_POST['register_submit'] ) ) {
 			$errors[] = 'Email is required.';
 		} elseif ( ! is_email( $user_email ) ) {
 			$errors[] = 'Invalid email format.';
-		} elseif ( email_exists( $user_email ) ) {
+		} elseif ( $user_email !== $current_user->user_email && email_exists( $user_email ) ) {
 			$errors[] = 'Email is already registered.';
-		}
-		if ( empty( $user_password ) ) {
-			$errors[] = 'Password is required.';
-		} elseif ( strlen( $user_password ) < 8 ) {
-			$errors[] = 'Password must be at least 8 characters.';
-		}
-		if ( username_exists( $username ) ) {
-			$errors[] = 'Username is already taken.';
 		}
 
 		// Dynamic ACF field validation
@@ -91,58 +81,28 @@ if ( isset( $_POST['register_submit'] ) ) {
 				if ( $field['required'] && ( empty( $value ) || ( is_array( $value ) && count( $value ) === 0 ) ) ) {
 					$errors[] = "$field_label is required.";
 				}
-				// // Validate specific fields
-				// if ( in_array( $field_name, [ 'phone', 'mobile' ] ) && ! empty( $value ) && ! preg_match( '/^\+?[1-9]\d{1,14}$/', $value ) ) {
-				// 	$errors[] = 'Invalid phone number format (e.g., +1234567890).';
-				// }
-				// if ( $field_name === 'linkedin__s' && ! empty( $value ) && ! filter_var( $value, FILTER_VALIDATE_URL ) ) {
-				// 	$errors[] = 'Invalid LinkedIn URL.';
-				// }
-				// if ( in_array( $field_name, [ 'current_salary', 'expected_salary' ] ) && ! empty( $value ) && ! is_numeric( $value ) ) {
-				// 	$errors[] = "$field_label must be a valid number.";
-				// }
 			}
 		}
 
 		if ( empty( $errors ) ) {
 			$user_data = [
-				'user_login' => $username,
-				'user_email' => $user_email,
-				'user_pass' => $user_password,
+				'ID' => $current_user->ID,
 				'first_name' => $first_name,
 				'last_name' => $last_name,
-				'role' => 'subscriber',
+				'user_email' => $user_email,
 			];
-			$user_id = wp_insert_user( $user_data );
+			$user_id = wp_update_user( $user_data );
 
 			if ( ! is_wp_error( $user_id ) ) {
 				// Save ACF fields to user meta
 				foreach ( $acf_values as $field_name => $value ) {
-					update_user_meta( $user_id, $field_name, $value );
+					update_user_meta( $current_user->ID, $field_name, $value );
 				}
-				error_log( 'Custom Registration: User created with ID ' . $user_id . ', saved meta: ' . print_r( $acf_values, true ) );
-				// Auto-login
-				wp_clear_auth_cookie();
-				$creds = [
-					'user_login' => $username,
-					'user_password' => $user_password,
-					'remember' => true,
-				];
-				$user = wp_signon( $creds, is_ssl() );
-				if ( ! is_wp_error( $user ) ) {
-					wp_set_current_user( $user_id );
-					wp_set_auth_cookie( $user_id, true, is_ssl() );
-					error_log( 'Custom Registration: User ID ' . $user_id . ' logged in successfully' );
-					$success = 'Registration successful! Redirecting to your profile...';
-					wp_redirect( home_url( '/profile/' ) );
-					exit;
-				} else {
-					$errors[] = 'Auto-login failed: ' . $user->get_error_message();
-					error_log( 'Custom Registration Error: Auto-login failed for User ID ' . $user_id . ': ' . $user->get_error_message() );
-				}
+				error_log( 'User Profile: User ID ' . $current_user->ID . ' updated, saved meta: ' . print_r( $acf_values, true ) );
+				$success = 'Profile updated successfully!';
 			} else {
 				$errors[] = $user_id->get_error_message();
-				error_log( 'Custom Registration Error: ' . $user_id->get_error_message() );
+				error_log( 'User Profile Error: ' . $user_id->get_error_message() );
 			}
 		}
 	}
@@ -188,23 +148,19 @@ get_header();
 			<?php echo $success; ?>
 		</div>
 	<?php endif; ?>
-	<form method="post" action="" class="form form--register space-y-4">
+	<form method="post" action="" class="form form--profile space-y-4">
 		<fieldset class="form__fieldset bg-[#f5f5f5] dark:bg-[#222222] p-single mb-half">
 			<div class="form__field-wrapper form__field-wrapper--first_name">
-				<label class="form__label form__label--first_name" for="register_first_name">First Name <span class="text-red-500">*</span></label>
-				<input class="form__field form__field--first_name" type="text" name="first_name" id="register_first_name" placeholder="e.g. John" required value="<?php echo isset( $_POST['first_name'] ) ? esc_attr( $_POST['first_name'] ) : ''; ?>" />
+				<label class="form__label form__label--first_name" for="profile_first_name">First Name <span class="text-red-500">*</span></label>
+				<input class="form__field form__field--first_name" type="text" name="first_name" id="profile_first_name" placeholder="e.g. John" required value="<?php echo esc_attr( $current_user->first_name ); ?>" />
 			</div>
 			<div class="form__field-wrapper form__field-wrapper--last_name">
-				<label class="form__label form__label--last_name" for="register_last_name">Last Name <span class="text-red-500">*</span></label>
-				<input class="form__field form__field--last_name" type="text" name="last_name" id="register_last_name" placeholder="e.g. Smith" required value="<?php echo isset( $_POST['last_name'] ) ? esc_attr( $_POST['last_name'] ) : ''; ?>" />
+				<label class="form__label form__label--last_name" for="profile_last_name">Last Name <span class="text-red-500">*</span></label>
+				<input class="form__field form__field--last_name" type="text" name="last_name" id="profile_last_name" placeholder="e.g. Smith" required value="<?php echo esc_attr( $current_user->last_name ); ?>" />
 			</div>
 			<div class="form__field-wrapper form__field-wrapper--user_email">
-				<label class="form__label form__label--user_email" for="register_user_email">Email Address <span class="text-red-500">*</span></label>
-				<input class="form__field form__field--user_email" type="email" name="user_email" id="register_user_email" placeholder="e.g. john@smith.com" required value="<?php echo isset( $_POST['user_email'] ) ? esc_attr( $_POST['user_email'] ) : ''; ?>" />
-			</div>
-			<div class="form__field-wrapper form__field-wrapper--user_password">
-				<label class="form__label form__label--user_password" for="register_user_password">Password <span class="text-red-500">*</span></label>
-				<input class="form__field form__field--user_password" type="password" name="user_password" id="register_user_password" placeholder="Enter New Password" required />
+				<label class="form__label form__label--user_email" for="profile_user_email">Email Address <span class="text-red-500">*</span></label>
+				<input class="form__field form__field--user_email" type="email" name="user_email" id="profile_user_email" placeholder="e.g. john@smith.com" required value="<?php echo esc_attr( $current_user->user_email ); ?>" />
 			</div>
 		</fieldset>
 		<?php
@@ -223,10 +179,11 @@ get_header();
 					$required = $field['required'] ? 'required' : '';
 					$required_star = $field['required'] ? '<span class="text-red-500">*</span>' : '';
 					$placeholder = ! empty( $field['placeholder'] ) ? esc_attr( $field['placeholder'] ) : 'Enter ' . esc_attr( $field_label );
-					$value = isset( $_POST[$field_name] ) ? ( is_array( $_POST[$field_name] ) ? array_map( 'esc_attr', $_POST[$field_name] ) : esc_attr( $_POST[$field_name] ) ) : '';
+					$value = get_user_meta( $current_user->ID, $field_name, true );
+					$value = is_array( $value ) ? array_map( 'esc_attr', $value ) : esc_attr( $value );
 					?>
 					<div class="form__field-wrapper form__field-wrapper--<?php echo esc_attr( $field_name ); ?>">
-						<label class="form__label form__label--<?php echo esc_attr( $field_name ); ?>" for="<?php echo 'register_' . esc_attr( $field_name ); ?>">
+						<label class="form__label form__label--<?php echo esc_attr( $field_name ); ?>" for="<?php echo 'profile_' . esc_attr( $field_name ); ?>">
 							<?php echo esc_html( $field_label ); ?>
 							<?php echo $required_star; ?>
 						</label>
@@ -241,7 +198,7 @@ get_header();
 										<input type="tel" 
 											   class="form__field form__field--<?php echo esc_attr( $field_name ); ?> !ps-11" 
 											   name="<?php echo esc_attr( $field_name ); ?>" 
-											   id="<?php echo 'register_' . esc_attr( $field_name ); ?>" 
+											   id="<?php echo 'profile_' . esc_attr( $field_name ); ?>" 
 											   placeholder="<?php echo $placeholder; ?>" 
 											   <?php echo $required; ?> 
 											   value="<?php echo is_array( $value ) ? '' : $value; ?>" />
@@ -254,7 +211,7 @@ get_header();
 										<input type="url" 
 											   class="form__field form__field--<?php echo esc_attr( $field_name ); ?> !ps-11" 
 											   name="<?php echo esc_attr( $field_name ); ?>" 
-											   id="<?php echo 'register_' . esc_attr( $field_name ); ?>" 
+											   id="<?php echo 'profile_' . esc_attr( $field_name ); ?>" 
 											   placeholder="<?php echo $placeholder; ?>" 
 											   <?php echo $required; ?> 
 											   value="<?php echo is_array( $value ) ? '' : $value; ?>" />
@@ -267,7 +224,7 @@ get_header();
 										<input type="number" 
 											   class="form__field form__field--<?php echo esc_attr( $field_name ); ?> !ps-11" 
 											   name="<?php echo esc_attr( $field_name ); ?>" 
-											   id="<?php echo 'register_' . esc_attr( $field_name ); ?>" 
+											   id="<?php echo 'profile_' . esc_attr( $field_name ); ?>" 
 											   placeholder="<?php echo $placeholder; ?>" 
 											   <?php echo $required; ?> 
 											   value="<?php echo is_array( $value ) ? '' : $value; ?>" />
@@ -279,7 +236,7 @@ get_header();
 									<input type="<?php echo esc_attr( $field_type ); ?>" 
 										   class="form__field form__field--<?php echo esc_attr( $field_name ); ?>" 
 										   name="<?php echo esc_attr( $field_name ); ?>" 
-										   id="<?php echo 'register_' . esc_attr( $field_name ); ?>" 
+										   id="<?php echo 'profile_' . esc_attr( $field_name ); ?>" 
 										   placeholder="<?php echo $placeholder; ?>" 
 										   <?php echo $required; ?> 
 										   value="<?php echo is_array( $value ) ? '' : $value; ?>" />
@@ -290,7 +247,7 @@ get_header();
 								?>
 								<textarea name="<?php echo esc_attr( $field_name ); ?>" 
 										  class="form__field form__field--<?php echo esc_attr( $field_name ); ?>" 
-										  id="<?php echo 'register_' . esc_attr( $field_name ); ?>" 
+										  id="<?php echo 'profile_' . esc_attr( $field_name ); ?>" 
 										  placeholder="<?php echo $placeholder; ?>" 
 										  <?php echo $required; ?>><?php echo is_array( $value ) ? '' : esc_textarea( $value ); ?></textarea>
 								<?php
@@ -300,7 +257,7 @@ get_header();
 								$name = ! empty( $field['multiple'] ) ? $field_name . '[]' : $field_name;
 								?>
 								<?php if ( $multiple ) : ?>
-									<select id="<?php echo 'register_' . esc_attr( $field_name ); ?>" 
+									<select id="<?php echo 'profile_' . esc_attr( $field_name ); ?>" 
 											name="<?php echo esc_attr( $name ); ?>" 
 											multiple 
 											data-hs-select='{
@@ -313,7 +270,7 @@ get_header();
 												"searchWrapperClasses": "advanced-select__search-wrapper",
 												"wrapperClasses": "advanced-select__wrapper",
 												"tagsItemTemplate": "<div class=\"advanced-select__tag-item\"><div class=\"advanced-select__tag-item-icon\" data-icon></div><div class=\"advanced-select__tag-item-title\" data-title></div><div class=\"advanced-select__tag-item-remove\" data-remove><svg class=\"shrink-0 size-3\" xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M18 6 6 18\"/><path d=\"m6 6 12 12\"/></svg></div></div>",
-												"tagsInputId": "<?php echo 'register_' . esc_attr( $field_name ); ?>",
+												"tagsInputId": "<?php echo 'profile_' . esc_attr( $field_name ); ?>",
 												"tagsInputClasses": "advanced-select__tags-input",
 												"optionTemplate": "<div class=\"flex items-center\"><div class=\"size-8 me-2\" data-icon></div><div><div class=\"text-sm font-semibold text-gray-800 dark:text-neutral-200\" data-title></div><div class=\"text-xs text-gray-500 dark:text-neutral-500\" data-description></div></div><div class=\"ms-auto\"><span class=\"hidden hs-selected:block\"><svg class=\"shrink-0 size-4 text-gold\" xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\" fill=\"currentColor\" viewBox=\"0 0 16 16\"><path d=\"M12.736 3.97a.733.733 0 0 1 1.047 0c.286.289.29.756.01 1.05L7.88 12.01a.733.733 0 0 1-1.065.02L3.217 8.384a.757.757 0 0 1 0-1.06.733.733 0 0 1 1.047 0l3.052 3.093 5.4-6.425a.247.247 0 0 1 .02-.022Z\"/></svg></span></div></div>",
 												"extraMarkup": "<div class=\"absolute top-1/2 end-3 -translate-y-1/2\"><svg class=\"shrink-0 size-3.5 text-gray-500 dark:text-neutral-500\" xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"m7 15 5 5 5-5\"/><path d=\"m7 9 5-5 5 5\"/></svg></div>"
@@ -326,7 +283,7 @@ get_header();
 										<?php endforeach; ?>
 									</select>
 								<?php else : ?>
-									<select id="<?php echo 'register_' . esc_attr( $field_name ); ?>" 
+									<select id="<?php echo 'profile_' . esc_attr( $field_name ); ?>" 
 											name="<?php echo esc_attr( $name ); ?>" 
 											data-hs-select='{
 												"placeholder": "<?php echo esc_attr( $field['instructions'] ?: 'Choose' ); ?>",
@@ -367,7 +324,7 @@ get_header();
 								}
 								if ( $field['field_type'] === 'select' ) :
 									?>
-									<select id="<?php echo 'register_' . esc_attr( $field_name ); ?>" 
+									<select id="<?php echo 'profile_' . esc_attr( $field_name ); ?>" 
 											name="<?php echo esc_attr( $field_name ); ?>" 
 											data-hs-select='{
 												"placeholder": "<?php echo esc_attr( $field['instructions'] ?: 'Choose' ); ?>",
@@ -391,7 +348,7 @@ get_header();
 										<?php endforeach; ?>
 									</select>
 								<?php elseif ( $field['field_type'] === 'multi_select' ) : ?>
-									<select id="<?php echo 'register_' . esc_attr( $field_name ); ?>" 
+									<select id="<?php echo 'profile_' . esc_attr( $field_name ); ?>" 
 											name="<?php echo esc_attr( $field_name ); ?>[]" 
 											multiple 
 											data-hs-select='{
@@ -404,7 +361,7 @@ get_header();
 												"searchWrapperClasses": "advanced-select__search-wrapper",
 												"wrapperClasses": "advanced-select__wrapper",
 												"tagsItemTemplate": "<div class=\"advanced-select__tag-item\"><div class=\"advanced-select__tag-item-icon\" data-icon></div><div class=\"advanced-select__tag-item-title\" data-title></div><div class=\"advanced-select__tag-item-remove\" data-remove><svg class=\"shrink-0 size-3\" xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M18 6 6 18\"/><path d=\"m6 6 12 12\"/></svg></div></div>",
-												"tagsInputId": "<?php echo 'register_' . esc_attr( $field_name ); ?>",
+												"tagsInputId": "<?php echo 'profile_' . esc_attr( $field_name ); ?>",
 												"tagsInputClasses": "advanced-select__tags-input",
 												"optionTemplate": "<div class=\"flex items-center\"><div class=\"size-8 me-2\" data-icon></div><div><div class=\"text-sm font-semibold text-gray-800 dark:text-neutral-200\" data-title></div><div class=\"text-xs text-gray-500 dark:text-neutral-500\" data-description></div></div><div class=\"ms-auto\"><span class=\"hidden hs-selected:block\"><svg class=\"shrink-0 size-4 text-gold\" xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\" fill=\"currentColor\" viewBox=\"0 0 16 16\"><path d=\"M12.736 3.97a.733.733 0 0 1 1.047 0c.286.289.29.756.01 1.05L7.88 12.01a.733.733 0 0 1-1.065.02L3.217 8.384a.757.757 0 0 1 0-1.06.733.733 0 0 1 1.047 0l3.052 3.093 5.4-6.425a.247.247 0 0 1 .02-.022Z\"/></svg></span></div></div>",
 												"extraMarkup": "<div class=\"absolute top-1/2 end-3 -translate-y-1/2\"><svg class=\"shrink-0 size-3.5 text-gray-500 dark:text-neutral-500\" xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"m7 15 5 5 5-5\"/><path d=\"m7 9 5-5 5 5\"/></svg></div>"
@@ -430,20 +387,20 @@ get_header();
 		}
 		?>
 		
-		<?php wp_nonce_field( 'custom_register', '_wpnonce' ); ?>
-		<input type="hidden" name="register_submit" value="1" />
+		<?php wp_nonce_field( 'custom_profile', '_wpnonce' ); ?>
+		<input type="hidden" name="profile_submit" value="1" />
 		<div class="text-center space-y-2">
-			<input type="submit" value="Create Your Account" class="button w-full" id="register_submit" />
-			<div class="text-sm mt-2">Already have an account? <a href="<?php echo esc_url( home_url( '/login/' ) ); ?>" class="no-underline">Log in</a></div>
+			<input type="submit" value="Update Profile" class="button w-full" id="profile_submit" />
+			<div class="text-sm mt-2"><a href="<?php echo esc_url( wp_logout_url( home_url( '/login/' ) ) ); ?>" class="no-underline">Log out</a></div>
 		</div>
 	</form>
 </div>
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-	const form = document.querySelector('.form.form--register');
-	const submitButton = document.getElementById('register_submit');
-	const emailInput = document.getElementById('register_user_email');
+	const form = document.querySelector('.form.form--profile');
+	const submitButton = document.getElementById('profile_submit');
+	const emailInput = document.getElementById('profile_user_email');
 	
 	if (form && submitButton) {
 		form.addEventListener('submit', function (event) {
@@ -453,15 +410,10 @@ document.addEventListener('DOMContentLoaded', function () {
 			} else if (!/\S+@\S+\.\S+/.test(emailInput.value)) {
 				errors.push('Email is invalid');
 			}
-			if (!document.getElementById('register_user_password').value) {
-				errors.push('Password is required');
-			} else if (document.getElementById('register_user_password').value.length < 8) {
-				errors.push('Password must be at least 8 characters');
-			}
-			if (!document.getElementById('register_first_name').value) {
+			if (!document.getElementById('profile_first_name').value) {
 				errors.push('First name is required');
 			}
-			if (!document.getElementById('register_last_name').value) {
+			if (!document.getElementById('profile_last_name').value) {
 				errors.push('Last name is required');
 			}
 			<?php
@@ -476,7 +428,7 @@ document.addEventListener('DOMContentLoaded', function () {
 					$field_type = $field['type'];
 					$required = $field['required'] ? 'true' : 'false';
 					?>
-					const <?php echo esc_js( $field_name ); ?>Input = document.getElementById('<?php echo 'register_' . esc_js( $field_name ); ?>');
+					const <?php echo esc_js( $field_name ); ?>Input = document.getElementById('<?php echo 'profile_' . esc_js( $field_name ); ?>');
 					if (<?php echo $required; ?> && !<?php echo esc_js( $field_name ); ?>Input.value) {
 						errors.push('<?php echo esc_js( $field_label ); ?> is required');
 					}
@@ -496,12 +448,6 @@ document.addEventListener('DOMContentLoaded', function () {
 			}
 		});
 	}
-
-	<?php if ( $success ) : ?>
-		setTimeout(function() {
-			window.location.href = '<?php echo esc_url( home_url( '/profile/' ) ); ?>';
-		}, 1000);
-	<?php endif; ?>
 });
 </script>
 
