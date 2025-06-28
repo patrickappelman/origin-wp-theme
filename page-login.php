@@ -10,8 +10,8 @@ ob_start();
 error_log( 'Custom Login: Page loaded' );
 
 if ( is_user_logged_in() ) {
-	error_log( 'Custom Login: User already logged in, redirecting to user-profile' );
-	wp_redirect( home_url( '/user-profile' ) );
+	error_log( 'Custom Login: User already logged in, redirecting to profile' );
+	wp_redirect( home_url( '/profile/' ) );
 	exit;
 }
 
@@ -50,7 +50,7 @@ if ( isset( $_POST['login_submit'] ) ) {
 				wp_set_auth_cookie( $user->ID, $remember, is_ssl() );
 				error_log( 'Custom Login: User ID ' . $user->ID . ' logged in successfully' );
 				$success = 'Login successful! Redirecting to your profile...';
-				wp_redirect( home_url( '/user-profile' ) );
+				wp_redirect( home_url( '/profile/' ) );
 				exit;
 			} else {
 				$errors[] = str_replace( '/wp-login.php?action=lostpassword', '/forgot-password/', $user->get_error_message() );
@@ -115,8 +115,8 @@ get_header();
 			</div>
 			<div class="form__field-wrapper form__field-wrapper--remember">
 				<div class="flex">
-					<input class="form__checkbox form__checkbox--remember" type="checkbox" name="remember" id="login_remember" value="1" />
-					<label class="form__checkbox-label form__checkbox-label--remember" for="login_remember">Remember Me</label>
+					<input type="checkbox" name="remember" id="login_remember" value="1" class="form__checkbox" />
+					<label for="login_remember" class="form__checkbox-label">Remember Me</label>
 				</div>
 			</div>
 		</fieldset>
@@ -163,7 +163,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
 	<?php if ( $success && str_contains( $success, 'Redirecting' ) ) : ?>
 		setTimeout(function() {
-			window.location.href = '<?php echo esc_url( home_url( '/user-profile' ) ); ?>';
+			window.location.href = '<?php echo esc_url( home_url( '/profile/' ) ); ?>';
 		}, 1000);
 	<?php endif; ?>
 });

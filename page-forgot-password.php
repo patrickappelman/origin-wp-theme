@@ -10,8 +10,8 @@ ob_start();
 error_log( 'Forgot Password: Page loaded' );
 
 if ( is_user_logged_in() ) {
-	error_log( 'Forgot Password: User already logged in, redirecting to user-profile' );
-	wp_redirect( home_url( '/user-profile' ) );
+	error_log( 'Forgot Password: User already logged in, redirecting to profile' );
+	wp_redirect( home_url( '/profile/' ) );
 	exit;
 }
 
@@ -140,33 +140,33 @@ get_header();
 	<?php endif; ?>
 
 	<?php if ( isset( $_GET['key'] ) && isset( $_GET['login'] ) && ! is_wp_error( $user ) ) : ?>
-		<form method="post" action="" class="reset-password-form space-y-4">
+		<form method="post" action="" class="form form--reset-password space-y-4">
 			<fieldset class="form__fieldset bg-[#f5f5f5] dark:bg-[#222222] p-single mb-half">
-				<div class="form__field-wrapper new_password">
-					<label class="form__label" for="new_password">New Password <span class="text-red-500">*</span></label>
-					<input type="password" name="new_password" id="new_password" placeholder="Enter New Password" class="form__field" required />
+				<div class="form__field-wrapper form__field-wrapper--new_password">
+					<label class="form__label form__label--new_password" for="reset_new_password">New Password <span class="text-red-500">*</span></label>
+					<input class="form__field form__field--new_password" type="password" name="new_password" id="reset_new_password" placeholder="Enter New Password" required />
 				</div>
 			</fieldset>
 			
 			<?php wp_nonce_field( 'custom_reset_password', '_wpnonce' ); ?>
 			<input type="hidden" name="reset_password_submit" value="1" />
 			<div class="text-center">
-				<input type="submit" value="Reset Password" class="button w-full" id="reset-password-submit" />
+				<input type="submit" value="Reset Password" class="button w-full" id="reset_password_submit" />
 			</div>
 		</form>
 	<?php else : ?>
-		<form method="post" action="" class="forgot-password-form space-y-4">
+		<form method="post" action="" class="form form--forgot-password space-y-4">
 			<fieldset class="form__fieldset bg-[#f5f5f5] dark:bg-[#222222] p-single mb-half">
-				<div class="form__field-wrapper user_email">
-					<label class="form__label" for="user_email">Email Address <span class="text-red-500">*</span></label>
-					<input type="email" name="user_email" id="user_email" placeholder="e.g. john@smith.com" class="form__field" required value="<?php echo isset( $_POST['user_email'] ) ? esc_attr( $_POST['user_email'] ) : ''; ?>" />
+				<div class="form__field-wrapper form__field-wrapper--user_email">
+					<label class="form__label form__label--user_email" for="forgot_user_email">Email Address <span class="text-red-500">*</span></label>
+					<input class="form__field form__field--user_email" type="email" name="user_email" id="forgot_user_email" placeholder="e.g. john@smith.com" required value="<?php echo isset( $_POST['user_email'] ) ? esc_attr( $_POST['user_email'] ) : ''; ?>" />
 				</div>
 			</fieldset>
 			
 			<?php wp_nonce_field( 'custom_forgot_password', '_wpnonce' ); ?>
 			<input type="hidden" name="forgot_password_submit" value="1" />
 			<div class="text-center space-y-2">
-				<input type="submit" value="Send Reset Link" class="button w-full" id="forgot-password-submit" />
+				<input type="submit" value="Send Reset Link" class="button w-full" id="forgot_password_submit" />
 				<div class="text-sm mt-2">Already have an account? <a href="<?php echo esc_url( home_url( '/login' ) ); ?>" class="no-underline">Log in</a></div>
 			</div>
 		</form>
@@ -175,9 +175,9 @@ get_header();
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-	const form = document.querySelector('.forgot-password-form') || document.querySelector('.reset-password-form');
-	const submitButton = document.getElementById('forgot-password-submit') || document.getElementById('reset-password-submit');
-	const emailInput = document.getElementById('user_email');
+	const form = document.querySelector('.form.form--forgot-password') || document.querySelector('.form.form--reset-password');
+	const submitButton = document.getElementById('forgot_password_submit') || document.getElementById('reset_password_submit');
+	const emailInput = document.getElementById('forgot_user_email');
 	
 	if (form && submitButton) {
 		form.addEventListener('submit', function (event) {
@@ -187,9 +187,9 @@ document.addEventListener('DOMContentLoaded', function () {
 			} else if (emailInput && !/\S+@\S+\.\S+/.test(emailInput.value)) {
 				errors.push('Email is invalid');
 			}
-			if (document.getElementById('new_password') && !document.getElementById('new_password').value) {
+			if (document.getElementById('reset_new_password') && !document.getElementById('reset_new_password').value) {
 				errors.push('New password is required');
-			} else if (document.getElementById('new_password') && document.getElementById('new_password').value.length < 8) {
+			} else if (document.getElementById('reset_new_password') && document.getElementById('reset_new_password').value.length < 8) {
 				errors.push('New password must be at least 8 characters');
 			}
 			if (errors.length > 0) {

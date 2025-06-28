@@ -10,8 +10,8 @@ ob_start();
 error_log( 'Custom Registration: Page loaded' );
 
 if ( is_user_logged_in() ) {
-	error_log( 'Custom Registration: User already logged in, redirecting to home' );
-	wp_redirect( home_url( '/profile' ) );
+	error_log( 'Custom Registration: User already logged in, redirecting to profile' );
+	wp_redirect( home_url( '/profile/' ) );
 	exit;
 }
 
@@ -78,8 +78,8 @@ if ( isset( $_POST['register_submit'] ) ) {
 					wp_set_current_user( $user_id );
 					wp_set_auth_cookie( $user_id, true, is_ssl() );
 					error_log( 'Custom Registration: User ID ' . $user_id . ' logged in successfully' );
-					$success = 'Registration successful! Redirecting to home...';
-					wp_redirect( home_url( '/' ) );
+					$success = 'Registration successful! Redirecting to your profile...';
+					wp_redirect( home_url( '/profile/' ) );
 					exit;
 				} else {
 					$errors[] = 'Auto-login failed: ' . $user->get_error_message();
@@ -130,32 +130,32 @@ get_header();
 	<?php endif; ?>
 	<?php if ( $success ) : ?>
 		<div class="alert-solid alert-solid--success">
-			<?php echo $success; ?></p>
+			<?php echo $success; ?>
 		</div>
 	<?php endif; ?>
-	<form method="post" action="" class="register-form space-y-4">
+	<form method="post" action="" class="form form--register space-y-4">
 		<fieldset class="form__fieldset bg-[#f5f5f5] dark:bg-[#222222] p-single mb-half">
-			<div class="form__field-wrapper first_name">
-				<label class="form__label" for="first_name">First Name <span class="text-red-500">*</span></label>
-				<input type="text" name="first_name" id="register_first_name" placeholder="e.g. John" class="form__field" required value="<?php echo isset( $_POST['first_name'] ) ? esc_attr( $_POST['first_name'] ) : ''; ?>" />
+			<div class="form__field-wrapper form__field-wrapper--first_name">
+				<label class="form__label form__label--first_name" for="register_first_name">First Name <span class="text-red-500">*</span></label>
+				<input class="form__field form__field--first_name" type="text" name="first_name" id="register_first_name" placeholder="e.g. John" required value="<?php echo isset( $_POST['first_name'] ) ? esc_attr( $_POST['first_name'] ) : ''; ?>" />
 			</div>
-			<div class="form__field-wrapper last_name">
-				<label class="form__label" for="last_name">Last Name <span class="text-red-500">*</span></label>
-				<input type="text" name="last_name" id="register_last_name" placeholder="e.g. Smith" class="form__field" required value="<?php echo isset( $_POST['last_name'] ) ? esc_attr( $_POST['last_name'] ) : ''; ?>" />
+			<div class="form__field-wrapper form__field-wrapper--last_name">
+				<label class="form__label form__label--last_name" for="register_last_name">Last Name <span class="text-red-500">*</span></label>
+				<input class="form__field form__field--last_name" type="text" name="last_name" id="register_last_name" placeholder="e.g. Smith" required value="<?php echo isset( $_POST['last_name'] ) ? esc_attr( $_POST['last_name'] ) : ''; ?>" />
 			</div>
-			<div class="form__field-wrapper user_email">
-				<label class="form__label" for="user_email">Email Address <span class="text-red-500">*</span></label>
-				<input type="email" name="user_email" id="register_user_email" placeholder="e.g. john@smith.com" class="form__field" required value="<?php echo isset( $_POST['user_email'] ) ? esc_attr( $_POST['user_email'] ) : ''; ?>" />
+			<div class="form__field-wrapper form__field-wrapper--user_email">
+				<label class="form__label form__label--user_email" for="register_user_email">Email Address <span class="text-red-500">*</span></label>
+				<input class="form__field form__field--user_email" type="email" name="user_email" id="register_user_email" placeholder="e.g. john@smith.com" required value="<?php echo isset( $_POST['user_email'] ) ? esc_attr( $_POST['user_email'] ) : ''; ?>" />
 			</div>
-			<div class="form__field-wrapper user_password">
-				<label class="form__label" for="user_password">Password <span class="text-red-500">*</span></label>
-				<input type="password" name="user_password" id="register_user_password" placeholder="Enter New Password" class="form__field" required />
+			<div class="form__field-wrapper form__field-wrapper--user_password">
+				<label class="form__label form__label--user_password" for="register_user_password">Password <span class="text-red-500">*</span></label>
+				<input class="form__field form__field--user_password" type="password" name="user_password" id="register_user_password" placeholder="Enter New Password" required />
 			</div>
 		</fieldset>
 		
 		<?php wp_nonce_field( 'custom_register', '_wpnonce' ); ?>
 		<input type="hidden" name="register_submit" value="1" />
-		<div class="text-center">
+		<div class="text-center space-y-2">
 			<input type="submit" value="Create Your Account" class="button w-full" id="register_submit" />
 			<div class="text-sm mt-2">Already have an account? <a href="<?php echo esc_url( home_url( '/login/' ) ); ?>" class="no-underline">Log in</a></div>
 		</div>
@@ -164,11 +164,10 @@ get_header();
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-	const form = document.querySelector('.register-form');
+	const form = document.querySelector('.form.form--register');
 	const submitButton = document.getElementById('register_submit');
 	const emailInput = document.getElementById('register_user_email');
 	
-	// Client-side validation and prevent double submission
 	if (form && submitButton) {
 		form.addEventListener('submit', function (event) {
 			let errors = [];
@@ -182,6 +181,12 @@ document.addEventListener('DOMContentLoaded', function () {
 			} else if (document.getElementById('register_user_password').value.length < 8) {
 				errors.push('Password must be at least 8 characters');
 			}
+			if (!document.getElementById('register_first_name').value) {
+				errors.push('First name is required');
+			}
+			if (!document.getElementById('register_last_name').value) {
+				errors.push('Last name is required');
+			}
 			if (errors.length > 0) {
 				event.preventDefault();
 				console.error('Client-side validation errors: ', errors);
@@ -189,16 +194,15 @@ document.addEventListener('DOMContentLoaded', function () {
 			} else {
 				console.log('Form submission attempted with email: ' + emailInput.value);
 				console.log('Form data: ', new FormData(form));
-				submitButton.disabled = true; // Prevent double submission
+				submitButton.disabled = true;
 				submitButton.value = 'Submitting...';
 			}
 		});
 	}
 
-	// Fallback redirect
 	<?php if ( $success ) : ?>
 		setTimeout(function() {
-			window.location.href = '<?php echo esc_url( home_url( '/' ) ); ?>';
+			window.location.href = '<?php echo esc_url( home_url( '/profile/' ) ); ?>';
 		}, 1000);
 	<?php endif; ?>
 });
