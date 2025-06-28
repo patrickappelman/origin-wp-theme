@@ -170,3 +170,51 @@ function get_taxonomy_link( $taxonomy ) {
 	}
 	return false;
 }
+
+
+add_action( 'user_register', function( $user_id ) {
+	error_log( 'WP User Register Triggered for User ID ' . $user_id );
+	$user = get_user_by( 'ID', $user_id );
+	if ( ! $user->user_login ) {
+		$user_login = sanitize_user( $user->user_email, true );
+		wp_update_user( [
+			'ID' => $user_id,
+			'user_login' => $user_login,
+		] );
+		error_log( 'Custom Registration: Set user_login to ' . $user_login . ' for User ID ' . $user_id );
+	}
+}, 10, 1 );
+
+// Logout action
+add_action( 'init', function() {
+	if ( isset( $_GET['action'] ) && $_GET['action'] === 'logout' ) {
+		if ( is_user_logged_in() ) {
+			check_admin_referer( 'custom_logout' );
+			wp_logout();
+			error_log( 'Custom Logout: User logged out' );
+			wp_redirect( home_url( '/login' ) );
+			exit;
+		} else {
+			wp_redirect( home_url( '/login' ) );
+			exit;
+		}
+	}
+} );
+
+// Customize password reset email
+add_filter( 'retrieve_password_message', function( $message, $key, $user_login, $user_data ) {
+	$reset_url = home_url( "/forgot-password/?key=$key&login=" . rawurlencode( $user_login ) );
+	$message = "Hi {$user_data->first_name},\n\n";
+	$message .= "You requested a password reset for your Origin Recruitment account.\n";
+	$message .= "Click the link below to reset your password:\n";
+	$message .= "$reset_url\n\n";
+	$message .= "If you did not request this, please ignore this email.\n";
+	$message .= "Thank you,\nOrigin Recruitment Team";
+	error_log( 'Custom Password Reset Email: Generated for ' . $user_data->user_email . ' with reset URL: ' . $reset_url );
+	return $message;
+}, 10, 4 );
+
+add_filter( 'retrieve_password_title', function( $title ) {
+	return 'Password Reset Request';
+}, 10, 1 );
+?>
