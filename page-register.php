@@ -5,11 +5,23 @@
  */
 ob_start();
 error_log( 'Custom Registration: Page loaded' );
+
+// Handle redirect_to parameter
+$redirect_url = isset( $_GET['redirect_to'] ) ? esc_url_raw( $_GET['redirect_to'] ) : home_url( '/profile/' );
+if ( parse_url( $redirect_url, PHP_URL_HOST ) !== parse_url( home_url(), PHP_URL_HOST ) ) {
+	$redirect_url = home_url( '/profile/' );
+	$url_suffix = '';
+} else {
+	$url_suffix = isset( $_GET['redirect_to'] ) ? '?redirect_to=' . urlencode( $redirect_url ) : '';
+}
+error_log( 'Custom Registration: redirect_to=' . ( $redirect_url ?: 'not set' ) . ', url_suffix=' . ( $url_suffix ?: 'empty' ) );
+
 if ( is_user_logged_in() ) {
-	error_log( 'Custom Registration: User already logged in, redirecting to profile' );
-	wp_redirect( home_url( '/profile/' ) );
+	error_log( 'Custom Registration: User already logged in, redirecting to ' . $redirect_url );
+	wp_safe_redirect( $redirect_url );
 	exit;
 }
+
 $field_groups = acf_get_field_groups( [ 'user_form' => 'all' ] );
 $acf_fields_by_group = [];
 $excluded_fields = [ 'candidate_id', 'id', 'resume_url', 'cover_letter_url' ];
@@ -129,8 +141,8 @@ if ( isset( $_POST['register_submit'] ) ) {
 					if ( ! is_wp_error( $user ) ) {
 						wp_set_current_user( $user_id );
 						wp_set_auth_cookie( $user_id, true, is_ssl() );
-						error_log( 'Custom Registration: User ID ' . $user_id . ' logged in successfully' );
-						wp_redirect( home_url( '/profile/?register=success' ) );
+						error_log( 'Custom Registration: User ID ' . $user_id . ' logged in successfully, redirecting to ' . $redirect_url );
+						wp_safe_redirect( $redirect_url . ( strpos( $redirect_url, '?' ) === false ? '?' : '&' ) . 'register=success' );
 						exit;
 					} else {
 						$errors[] = 'Auto-login failed: ' . $user->get_error_message();
@@ -183,13 +195,13 @@ get_header();
 	<?php if ( ! empty( $errors ) ) : ?>
 		<?php foreach ( $errors as $error ) : ?>
 			<div class="alert-solid alert-solid--danger">
- jaun				<?php echo esc_html( $error ); ?>
+				<?php echo esc_html( $error ); ?>
 			</div>
 		<?php endforeach; ?>
 	<?php endif; ?>
 	<?php if ( isset( $_GET['register'] ) && $_GET['register'] === 'success' ) : ?>
 		<div class="alert-solid alert-solid--success">
-			Registration successful! Redirecting to your profile...
+			Registration successful! Redirecting...
 		</div>
 	<?php endif; ?>
 	<form method="post" action="" class="form form--register space-y-4" enctype="multipart/form-data">
@@ -448,7 +460,7 @@ get_header();
 		<input type="hidden" name="register_submit" value="1" />
 		<div class="text-center space-y-2">
 			<input type="submit" value="Create Your Account" class="button w-full" id="register_submit" />
-			<div class="text-sm mt-2">Already have an account? <a href="<?php echo esc_url( home_url( '/login/' ) ); ?>" class="no-underline">Log in</a></div>
+			<div class="text-sm mt-2">Already have an account? <a href="<?php echo esc_url( home_url( '/login/' ) . $url_suffix ); ?>" class="no-underline">Log in</a></div>
 		</div>
 	</form>
 	<script>
@@ -531,7 +543,7 @@ get_header();
 		});
 		<?php if ( isset( $_GET['register'] ) && $_GET['register'] === 'success' ) : ?>
 		setTimeout(function() {
-			window.location.href = '<?php echo esc_url( home_url( '/profile/' ) ); ?>';
+			window.location.href = '<?php echo esc_url( $redirect_url ); ?>';
 		}, 1000);
 		<?php endif; ?>
 	});

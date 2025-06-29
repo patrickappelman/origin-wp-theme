@@ -5,11 +5,24 @@
  */
 ob_start();
 error_log( 'User Profile: Page loaded' );
+
+// Handle redirect_to parameter for unauthenticated users
+$redirect_url = isset( $_GET['redirect_to'] ) ? esc_url_raw( $_GET['redirect_to'] ) : home_url( '/profile/' );
+if ( parse_url( $redirect_url, PHP_URL_HOST ) !== parse_url( home_url(), PHP_URL_HOST ) ) {
+	$redirect_url = home_url( '/profile/' );
+	$url_suffix = '';
+} else {
+	$url_suffix = isset( $_GET['redirect_to'] ) ? '?redirect_to=' . urlencode( $redirect_url ) : '';
+}
+error_log( 'User Profile: redirect_to=' . ( $redirect_url ?: 'not set' ) . ', url_suffix=' . ( $url_suffix ?: 'empty' ) );
+
 if ( ! is_user_logged_in() ) {
-	error_log( 'User Profile: User not logged in, redirecting to login' );
-	wp_safe_redirect( home_url( '/login/' ) );
+	$login_redirect_url = home_url( '/login/' ) . '?redirect_to=' . urlencode( home_url( '/profile/' ) );
+	error_log( 'User Profile: User not logged in, redirecting to ' . $login_redirect_url );
+	wp_safe_redirect( $login_redirect_url );
 	exit;
 }
+
 $current_user = wp_get_current_user();
 $field_groups = acf_get_field_groups( [ 'user_form' => 'all' ] );
 $acf_fields_by_group = [];
@@ -481,7 +494,7 @@ get_header();
 		<input type="hidden" name="profile_submit" value="1" />
 		<div class="text-center space-y-2">
 			<input type="submit" value="Update Profile" class="button w-full" id="profile_submit" />
-			<div class="text-sm mt-2"><a href="<?php echo esc_url( wp_logout_url( home_url( '/login/' ) ) ); ?>" class="no-underline">Log out</a></div>
+			<div class="text-sm mt-2"><a href="<?php echo esc_url( wp_logout_url( home_url( '/login/' ) . $url_suffix ) ); ?>" class="no-underline">Log out</a></div>
 		</div>
 	</form>
 	<script>

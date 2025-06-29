@@ -9,9 +9,19 @@ ob_start();
 
 error_log( 'Custom Login: Page loaded' );
 
+// Handle redirect_to parameter
+$redirect_url = isset( $_GET['redirect_to'] ) ? esc_url_raw( $_GET['redirect_to'] ) : home_url( '/profile/' );
+if ( parse_url( $redirect_url, PHP_URL_HOST ) !== parse_url( home_url(), PHP_URL_HOST ) ) {
+	$redirect_url = home_url( '/profile/' );
+	$url_suffix = '';
+} else {
+	$url_suffix = isset( $_GET['redirect_to'] ) ? '?redirect_to=' . urlencode( $redirect_url ) : '';
+}
+error_log( 'Custom Login: redirect_to=' . ( $redirect_url ?: 'not set' ) . ', url_suffix=' . ( $url_suffix ?: 'empty' ) );
+
 if ( is_user_logged_in() ) {
-	error_log( 'Custom Login: User already logged in, redirecting to profile' );
-	wp_redirect( home_url( '/profile/' ) );
+	error_log( 'Custom Login: User already logged in, redirecting to ' . $redirect_url );
+	wp_safe_redirect( $redirect_url );
 	exit;
 }
 
@@ -48,12 +58,12 @@ if ( isset( $_POST['login_submit'] ) ) {
 			if ( ! is_wp_error( $user ) ) {
 				wp_set_current_user( $user->ID );
 				wp_set_auth_cookie( $user->ID, $remember, is_ssl() );
-				error_log( 'Custom Login: User ID ' . $user->ID . ' logged in successfully' );
-				$success = 'Login successful! Redirecting to your profile...';
-				wp_redirect( home_url( '/profile/' ) );
+				error_log( 'Custom Login: User ID ' . $user->ID . ' logged in successfully, redirecting to ' . $redirect_url );
+				$success = 'Login successful! Redirecting...';
+				wp_safe_redirect( $redirect_url );
 				exit;
 			} else {
-				$errors[] = str_replace( '/wp-login.php?action=lostpassword', '/forgot-password/', $user->get_error_message() );
+				$errors[] = str_replace( '/wp-login.php?action=lostpassword', '/forgot-password/' . $url_suffix, $user->get_error_message() );
 				error_log( 'Custom Login Error: ' . $user->get_error_message() );
 			}
 		}
@@ -94,13 +104,13 @@ get_header();
 	<?php if ( ! empty( $errors ) ) : ?>
 		<?php foreach ( $errors as $error ) : ?>
 			<div class="alert-solid alert-solid--danger">
-				<?php echo $error; ?>
+				<?php echo esc_html( $error ); ?>
 			</div>
 		<?php endforeach; ?>
 	<?php endif; ?>
 	<?php if ( $success ) : ?>
 		<div class="alert-solid alert-solid--success">
-			<?php echo $success; ?>
+			<?php echo esc_html( $success ); ?>
 		</div>
 	<?php endif; ?>
 	<form method="post" action="" class="form form--login space-y-4">
@@ -125,8 +135,8 @@ get_header();
 		<input type="hidden" name="login_submit" value="1" />
 		<div class="text-center space-y-2">
 			<input type="submit" value="Log In" class="button w-full" id="login_submit" />
-			<div class="text-sm mt-2">Don't have an account? <a href="<?php echo esc_url( home_url( '/register' ) ); ?>" class="no-underline">Sign up now!</a></div>
-			<div class="text-sm mt-2"><a href="<?php echo esc_url( home_url( '/forgot-password' ) ); ?>" class="no-underline">Forgot Password?</a></div>
+			<div class="text-sm mt-2">Don't have an account? <a href="<?php echo esc_url( home_url( '/register/' ) . $url_suffix ); ?>" class="no-underline">Sign up now!</a></div>
+			<div class="text-sm mt-2"><a href="<?php echo esc_url( home_url( '/forgot-password/' ) . $url_suffix ); ?>" class="no-underline">Forgot Password?</a></div>
 		</div>
 	</form>
 </div>
@@ -163,7 +173,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
 	<?php if ( $success && str_contains( $success, 'Redirecting' ) ) : ?>
 		setTimeout(function() {
-			window.location.href = '<?php echo esc_url( home_url( '/profile/' ) ); ?>';
+			window.location.href = '<?php echo esc_url( $redirect_url ); ?>';
 		}, 1000);
 	<?php endif; ?>
 });
