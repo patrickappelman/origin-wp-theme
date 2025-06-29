@@ -13,7 +13,7 @@ if ( ! is_user_logged_in() ) {
 $current_user = wp_get_current_user();
 $field_groups = acf_get_field_groups( [ 'user_form' => 'all' ] );
 $acf_fields_by_group = [];
-$excluded_fields = [ 'candidate_id', 'id', 'resume_url' ];
+$excluded_fields = [ 'candidate_id', 'id', 'resume_url', 'cover_letter_url' ];
 foreach ( $field_groups as $group ) {
 	$acf_fields_by_group[$group['key']] = [
 		'title' => $group['title'],
@@ -31,6 +31,7 @@ if ( isset( $_POST['profile_submit'] ) ) {
 		$last_name = sanitize_text_field( $_POST['last_name'] ?? '' );
 		$user_email = sanitize_email( $_POST['user_email'] ?? '' );
 		$resume = $_FILES['resume'] ?? null;
+		$cover_letter = $_FILES['cover_letter'] ?? null;
 		$resume_url = get_user_meta( $current_user->ID, 'resume_url', true );
 		if ( empty( $first_name ) ) $errors[] = 'First name is required.';
 		if ( empty( $last_name ) ) $errors[] = 'Last name is required.';
@@ -43,6 +44,13 @@ if ( isset( $_POST['profile_submit'] ) ) {
 				$errors[] = 'Resume must be a PDF file.';
 			} elseif ( $resume['size'] > 5 * 1024 * 1024 ) {
 				$errors[] = 'Resume file size must be less than 5MB.';
+			}
+		}
+		if ( $cover_letter && $cover_letter['error'] !== UPLOAD_ERR_NO_FILE ) {
+			if ( $cover_letter['type'] !== 'application/pdf' ) {
+				$errors[] = 'Cover letter must be a PDF file.';
+			} elseif ( $cover_letter['size'] > 5 * 1024 * 1024 ) {
+				$errors[] = 'Cover letter file size must be less than 5MB.';
 			}
 		}
 		$acf_values = [];
@@ -81,9 +89,9 @@ if ( isset( $_POST['profile_submit'] ) ) {
 					update_user_meta( $current_user->ID, $field_name, $value );
 					error_log( 'User Profile: Saved ACF field ' . $field_name . ' for user ID ' . $current_user->ID . ': Result=' . var_export( $value, true ) );
 				}
+				$upload_dir = wp_upload_dir()['basedir'] . '/temp/';
+				if ( ! file_exists( $upload_dir ) ) wp_mkdir_p( $upload_dir );
 				if ( $resume && $resume['error'] !== UPLOAD_ERR_NO_FILE ) {
-					$upload_dir = wp_upload_dir()['basedir'] . '/temp/';
-					if ( ! file_exists( $upload_dir ) ) wp_mkdir_p( $upload_dir );
 					$resume_path = $upload_dir . uniqid( 'resume_' ) . '.pdf';
 					if ( move_uploaded_file( $resume['tmp_name'], $resume_path ) ) {
 						update_user_meta( $current_user->ID, '_temp_resume_path', $resume_path );
@@ -91,6 +99,16 @@ if ( isset( $_POST['profile_submit'] ) ) {
 					} else {
 						$errors[] = 'Failed to upload resume.';
 						error_log( 'User Profile: Failed to upload resume: ' . print_r( $resume, true ) );
+					}
+				}
+				if ( $cover_letter && $cover_letter['error'] !== UPLOAD_ERR_NO_FILE ) {
+					$cover_letter_path = $upload_dir . uniqid( 'cover_letter_' ) . '.pdf';
+					if ( move_uploaded_file( $cover_letter['tmp_name'], $cover_letter_path ) ) {
+						update_user_meta( $current_user->ID, '_temp_cover_letter_path', $cover_letter_path );
+						error_log( 'User Profile: Cover letter uploaded to temp path: ' . $cover_letter_path );
+					} else {
+						$errors[] = 'Failed to upload cover letter.';
+						error_log( 'User Profile: Failed to upload cover letter: ' . print_r( $cover_letter, true ) );
 					}
 				}
 				if ( empty( $errors ) ) {
@@ -385,10 +403,10 @@ get_header();
 			<?php
 		}
 		?>
-		<?php $resume_url = get_user_meta( $current_user->ID, 'resume_url', true ); ?>
 		<fieldset class="form__fieldset bg-[#f5f5f5] dark:bg-[#222222] p-single mb-half">
 			<div class="form__field-wrapper form__field-wrapper--resume">
 				<label class="form__label form__label--resume">Resume (PDF) <span class="text-red-500">*</span></label>
+				<?php $resume_url = get_user_meta( $current_user->ID, 'resume_url', true ); ?>
 				<?php if ( $resume_url ) : ?>
 					<?php
 					$parts = explode( '/', rtrim( $resume_url, '/' ) );
@@ -398,13 +416,13 @@ get_header();
 						$download_url = wp_nonce_url( add_query_arg( [ 'action' => 'download_resume' ], home_url() ), 'download_resume' );
 						?>
 						<p class="text-sm not-prose mt-5"><a href="<?php echo esc_url( $download_url ); ?>" class="button download-resume text-sm mb-2">Download Your Resume</a></p>
-						<button type="button" class="hs-collapse-toggle button button--outline inline-flex items-center gap-x-2 text-sm" id="hs-basic-collapse" aria-expanded="false" aria-controls="profile_upload_new_resume" data-hs-collapse="#profile_upload_new_resume">
+						<button type="button" class="hs-collapse-toggle button button--outline inline-flex items-center gap-x-2 text-sm" id="hs-basic-collapse-resume" aria-expanded="false" aria-controls="profile_upload_new_resume" data-hs-collapse="#profile_upload_new_resume">
 							Upload New Resume
 							<svg class="hs-collapse-open:rotate-180 shrink-0 size-4 text-white" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 								<path d="m6 9 6 6 6-6"></path>
 							</svg>
 						</button>
-						<div id="profile_upload_new_resume" class="hs-collapse hidden w-full overflow-hidden transition-[height] duration-300" aria-labelledby="hs-basic-collapse">
+						<div id="profile_upload_new_resume" class="hs-collapse hidden w-full overflow-hidden transition-[height] duration-300" aria-labelledby="hs-basic-collapse-resume">
 							<div class="mt-5">
 								<p class="text-gray-500 dark:text-neutral-400">
 									<input class="form__field form__field--resume form__field--upload" type="file" name="resume" id="profile_resume" accept="application/pdf" <?php echo empty( $resume_url ) ? 'required' : ''; ?> />
@@ -418,7 +436,44 @@ get_header();
 					?>
 				<?php else : ?>
 					<p class="text-sm text-red-500 mt-0 mb-2">No resume uploaded. Please upload a PDF resume.</p>
-					<input class="form__field form__field--resume form__field--upload" type="file" name="resume" id="profile_resume" accept="application/pdf" <?php echo empty( $resume_url ) ? 'required' : ''; ?> />
+					<input class="form__field form__field--resume form__field--upload" type="file" name="resume" id="profile_resume" accept="application/pdf" required />
+				<?php endif; ?>
+			</div>
+		</fieldset>
+		<fieldset class="form__fieldset bg-[#f5f5f5] dark:bg-[#222222] p-single mb-half">
+			<div class="form__field-wrapper form__field-wrapper--cover_letter">
+				<label class="form__label form__label--cover_letter">Cover Letter (PDF, Optional)</label>
+				<?php $cover_letter_url = get_user_meta( $current_user->ID, 'cover_letter_url', true ); ?>
+				<?php if ( $cover_letter_url ) : ?>
+					<?php
+					$parts = explode( '/', rtrim( $cover_letter_url, '/' ) );
+					$attachment_id = end( $parts );
+					$candidate_id = count( $parts ) >= 3 ? $parts[count( $parts ) - 3] : '';
+					if ( ctype_digit( $candidate_id ) && ctype_digit( $attachment_id ) ) {
+						$download_url = wp_nonce_url( add_query_arg( [ 'action' => 'download_cover_letter' ], home_url() ), 'download_cover_letter' );
+						?>
+						<p class="text-sm not-prose mt-5"><a href="<?php echo esc_url( $download_url ); ?>" class="button download-cover-letter text-sm mb-2">Download Your Cover Letter</a></p>
+						<button type="button" class="hs-collapse-toggle button button--outline inline-flex items-center gap-x-2 text-sm" id="hs-basic-collapse-cover-letter" aria-expanded="false" aria-controls="profile_upload_new_cover_letter" data-hs-collapse="#profile_upload_new_cover_letter">
+							Upload New Cover Letter
+							<svg class="hs-collapse-open:rotate-180 shrink-0 size-4 text-white" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+								<path d="m6 9 6 6 6-6"></path>
+							</svg>
+						</button>
+						<div id="profile_upload_new_cover_letter" class="hs-collapse hidden w-full overflow-hidden transition-[height] duration-300" aria-labelledby="hs-basic-collapse-cover-letter">
+							<div class="mt-5">
+								<p class="text-gray-500 dark:text-neutral-400">
+									<input class="form__field form__field--cover_letter form__field--upload" type="file" name="cover_letter" id="profile_cover_letter" accept="application/pdf" />
+								</p>
+							</div>
+						</div>
+					<?php
+					} else {
+						error_log( 'User Profile: Invalid cover_letter_url format for user ID ' . $current_user->ID . ': ' . $cover_letter_url );
+					}
+					?>
+				<?php else : ?>
+					<p class="text-sm text-gray-500 dark:text-neutral-400 mt-0 mb-2">No cover letter uploaded. Optionally upload a PDF cover letter.</p>
+					<input class="form__field form__field--cover_letter form__field--upload" type="file" name="cover_letter" id="profile_cover_letter" accept="application/pdf" />
 				<?php endif; ?>
 			</div>
 		</fieldset>
@@ -434,7 +489,9 @@ get_header();
 		const form = document.querySelector('.form.form--profile');
 		const submitButton = document.getElementById('profile_submit');
 		const resumeInput = document.getElementById('profile_resume');
+		const coverLetterInput = document.getElementById('profile_cover_letter');
 		const downloadButton = document.querySelector('.download-resume');
+		const downloadCoverLetterButton = document.querySelector('.download-cover-letter');
 		let isSubmitting = false;
 		if (!form || !submitButton || !resumeInput) {
 			console.error('Profile form elements missing');
@@ -461,6 +518,13 @@ get_header();
 					errors.push('Resume must be a PDF file');
 				} else if (resumeInput.files[0].size > 5 * 1024 * 1024) {
 					errors.push('Resume file size must be less than 5MB');
+				}
+			}
+			if (coverLetterInput && coverLetterInput.files.length) {
+				if (coverLetterInput.files[0].type !== 'application/pdf') {
+					errors.push('Cover letter must be a PDF file');
+				} else if (coverLetterInput.files[0].size > 5 * 1024 * 1024) {
+					errors.push('Cover letter file size must be less than 5MB');
 				}
 			}
 			<?php

@@ -12,7 +12,7 @@ if ( is_user_logged_in() ) {
 }
 $field_groups = acf_get_field_groups( [ 'user_form' => 'all' ] );
 $acf_fields_by_group = [];
-$excluded_fields = [ 'candidate_id', 'id', 'resume_url' ];
+$excluded_fields = [ 'candidate_id', 'id', 'resume_url', 'cover_letter_url' ];
 foreach ( $field_groups as $group ) {
 	$acf_fields_by_group[$group['key']] = [
 		'title' => $group['title'],
@@ -33,6 +33,7 @@ if ( isset( $_POST['register_submit'] ) ) {
 		$user_password = $_POST['user_password'] ?? '';
 		$username = sanitize_user( $user_email, true );
 		$resume = $_FILES['resume'] ?? null;
+		$cover_letter = $_FILES['cover_letter'] ?? null;
 		// Validation
 		if ( empty( $first_name ) ) $errors[] = 'First name is required.';
 		if ( empty( $last_name ) ) $errors[] = 'Last name is required.';
@@ -48,6 +49,13 @@ if ( isset( $_POST['register_submit'] ) ) {
 			$errors[] = 'Resume must be a PDF file.';
 		} elseif ( $resume['size'] > 5 * 1024 * 1024 ) {
 			$errors[] = 'Resume file size must be less than 5MB.';
+		}
+		if ( $cover_letter && $cover_letter['error'] !== UPLOAD_ERR_NO_FILE ) {
+			if ( $cover_letter['type'] !== 'application/pdf' ) {
+				$errors[] = 'Cover letter must be a PDF file.';
+			} elseif ( $cover_letter['size'] > 5 * 1024 * 1024 ) {
+				$errors[] = 'Cover letter file size must be less than 5MB.';
+			}
 		}
 		$acf_values = [];
 		foreach ( $acf_fields_by_group as $group_key => $group_data ) {
@@ -87,16 +95,27 @@ if ( isset( $_POST['register_submit'] ) ) {
 					update_field( $field_name, $value, 'user_' . $user_id );
 					error_log( 'Custom Registration: Saved ACF field ' . $field_name . ' for user ID ' . $user_id . ': Value=' . var_export( $value, true ) );
 				}
-				// Handle resume upload
 				$upload_dir = wp_upload_dir()['basedir'] . '/temp/';
 				if ( ! file_exists( $upload_dir ) ) wp_mkdir_p( $upload_dir );
-				$resume_path = $upload_dir . uniqid( 'resume_' ) . '.pdf';
-				if ( move_uploaded_file( $resume['tmp_name'], $resume_path ) ) {
-					update_user_meta( $user_id, '_temp_resume_path', $resume_path );
-					error_log( 'Custom Registration: Resume uploaded to temp path: ' . $resume_path );
-				} else {
-					$errors[] = 'Failed to upload resume.';
-					error_log( 'Custom Registration: Failed to upload resume: ' . print_r( $resume, true ) );
+				if ( $resume && $resume['error'] !== UPLOAD_ERR_NO_FILE ) {
+					$resume_path = $upload_dir . uniqid( 'resume_' ) . '.pdf';
+					if ( move_uploaded_file( $resume['tmp_name'], $resume_path ) ) {
+						update_user_meta( $user_id, '_temp_resume_path', $resume_path );
+						error_log( 'Custom Registration: Resume uploaded to temp path: ' . $resume_path );
+					} else {
+						$errors[] = 'Failed to upload resume.';
+						error_log( 'Custom Registration: Failed to upload resume: ' . print_r( $resume, true ) );
+					}
+				}
+				if ( $cover_letter && $cover_letter['error'] !== UPLOAD_ERR_NO_FILE ) {
+					$cover_letter_path = $upload_dir . uniqid( 'cover_letter_' ) . '.pdf';
+					if ( move_uploaded_file( $cover_letter['tmp_name'], $cover_letter_path ) ) {
+						update_user_meta( $user_id, '_temp_cover_letter_path', $cover_letter_path );
+						error_log( 'Custom Registration: Cover letter uploaded to temp path: ' . $cover_letter_path );
+					} else {
+						$errors[] = 'Failed to upload cover letter.';
+						error_log( 'Custom Registration: Failed to upload cover letter: ' . print_r( $cover_letter, true ) );
+					}
 				}
 				if ( empty( $errors ) ) {
 					do_action( 'oru_profile_updated', $user_id );
@@ -164,7 +183,7 @@ get_header();
 	<?php if ( ! empty( $errors ) ) : ?>
 		<?php foreach ( $errors as $error ) : ?>
 			<div class="alert-solid alert-solid--danger">
-				<?php echo esc_html( $error ); ?>
+ jaun				<?php echo esc_html( $error ); ?>
 			</div>
 		<?php endforeach; ?>
 	<?php endif; ?>
@@ -394,7 +413,7 @@ get_header();
 											class="form__field form__field--<?php echo esc_attr( $field_name ); ?>">
 										<?php foreach ( $terms as $term ) : ?>
 											<option value="<?php echo esc_attr( $term->term_id ); ?>" <?php echo is_array( $value ) && in_array( $term->term_id, $value ) ? 'selected' : ''; ?>>
-												<?php echo esc_html( $field_label ); ?>
+												<?php echo esc_html( $term->name ); ?>
 											</option>
 										<?php endforeach; ?>
 									</select>
@@ -418,6 +437,13 @@ get_header();
 				<input class="form__field form__field--resume form__field--upload" type="file" name="resume" id="register_resume" accept="application/pdf" required />
 			</div>
 		</fieldset>
+		<fieldset class="form__fieldset bg-[#f5f5f5] dark:bg-[#222222] p-single mb-half">
+			<div class="form__field-wrapper form__field-wrapper--cover_letter">
+				<label class="form__label form__label--cover_letter" for="register_cover_letter">Cover Letter (PDF, Optional)</label>
+				<p class="text-sm text-gray-500 dark:text-neutral-400 mt-0 mb-2">No cover letter uploaded. Optionally upload a PDF cover letter.</p>
+				<input class="form__field form__field--cover_letter form__field--upload" type="file" name="cover_letter" id="register_cover_letter" accept="application/pdf" />
+			</div>
+		</fieldset>
 		<?php wp_nonce_field( 'custom_register', '_wpnonce' ); ?>
 		<input type="hidden" name="register_submit" value="1" />
 		<div class="text-center space-y-2">
@@ -431,6 +457,7 @@ get_header();
 		const submitButton = document.getElementById('register_submit');
 		const emailInput = document.getElementById('register_user_email');
 		const resumeInput = document.getElementById('register_resume');
+		const coverLetterInput = document.getElementById('register_cover_letter');
 		let isSubmitting = false;
 		if (!form || !submitButton || !emailInput || !resumeInput) {
 			console.error('Register form elements missing');
@@ -465,6 +492,13 @@ get_header();
 				errors.push('Resume must be a PDF file');
 			} else if (resumeInput.files[0].size > 5 * 1024 * 1024) {
 				errors.push('Resume file size must be less than 5MB');
+			}
+			if (coverLetterInput && coverLetterInput.files.length) {
+				if (coverLetterInput.files[0].type !== 'application/pdf') {
+					errors.push('Cover letter must be a PDF file');
+				} else if (coverLetterInput.files[0].size > 5 * 1024 * 1024) {
+					errors.push('Cover letter file size must be less than 5MB');
+				}
 			}
 			<?php
 			foreach ( $acf_fields_by_group as $group_key => $group_data ) {
