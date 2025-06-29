@@ -3,33 +3,24 @@
  * Template Name: Custom Registration
  * Path: wp-content/themes/origin/page-register.php
  */
-
-// Buffer output to prevent headers issues
 ob_start();
-
 error_log( 'Custom Registration: Page loaded' );
-
 if ( is_user_logged_in() ) {
 	error_log( 'Custom Registration: User already logged in, redirecting to profile' );
 	wp_redirect( home_url( '/profile/' ) );
 	exit;
 }
-
-// Get ACF field groups for users
 $field_groups = acf_get_field_groups( [ 'user_form' => 'all' ] );
 $acf_fields_by_group = [];
-$excluded_fields = [ 'candidate_id', 'id' ]; // Fields to exclude from rendering
-
+$excluded_fields = [ 'candidate_id', 'id', 'resume_url' ];
 foreach ( $field_groups as $group ) {
 	$acf_fields_by_group[$group['key']] = [
 		'title' => $group['title'],
 		'fields' => acf_get_fields( $group['key'] ),
 	];
 }
-
 $errors = [];
 $success = '';
-
 if ( isset( $_POST['register_submit'] ) ) {
 	error_log( 'Custom Registration: Form submission detected with POST: ' . print_r( $_POST, true ) );
 	if ( ! wp_verify_nonce( $_POST['_wpnonce'], 'custom_register' ) ) {
@@ -40,38 +31,28 @@ if ( isset( $_POST['register_submit'] ) ) {
 		$last_name = sanitize_text_field( $_POST['last_name'] ?? '' );
 		$user_email = sanitize_email( $_POST['user_email'] ?? '' );
 		$user_password = $_POST['user_password'] ?? '';
-		$username = sanitize_user( $user_email, true ); // Set username to email
-
-		// Validation for core fields
-		if ( empty( $first_name ) ) {
-			$errors[] = 'First name is required.';
+		$username = sanitize_user( $user_email, true );
+		$resume = $_FILES['resume'] ?? null;
+		// Validation
+		if ( empty( $first_name ) ) $errors[] = 'First name is required.';
+		if ( empty( $last_name ) ) $errors[] = 'Last name is required.';
+		if ( empty( $user_email ) ) $errors[] = 'Email is required.';
+		elseif ( ! is_email( $user_email ) ) $errors[] = 'Invalid email format.';
+		elseif ( email_exists( $user_email ) ) $errors[] = 'Email is already registered.';
+		if ( empty( $user_password ) ) $errors[] = 'Password is required.';
+		elseif ( strlen( $user_password ) < 8 ) $errors[] = 'Password must be at least 8 characters.';
+		if ( username_exists( $username ) ) $errors[] = 'Username is already taken.';
+		if ( ! $resume || $resume['error'] === UPLOAD_ERR_NO_FILE ) {
+			$errors[] = 'Resume is required.';
+		} elseif ( $resume['type'] !== 'application/pdf' ) {
+			$errors[] = 'Resume must be a PDF file.';
+		} elseif ( $resume['size'] > 5 * 1024 * 1024 ) {
+			$errors[] = 'Resume file size must be less than 5MB.';
 		}
-		if ( empty( $last_name ) ) {
-			$errors[] = 'Last name is required.';
-		}
-		if ( empty( $user_email ) ) {
-			$errors[] = 'Email is required.';
-		} elseif ( ! is_email( $user_email ) ) {
-			$errors[] = 'Invalid email format.';
-		} elseif ( email_exists( $user_email ) ) {
-			$errors[] = 'Email is already registered.';
-		}
-		if ( empty( $user_password ) ) {
-			$errors[] = 'Password is required.';
-		} elseif ( strlen( $user_password ) < 8 ) {
-			$errors[] = 'Password must be at least 8 characters.';
-		}
-		if ( username_exists( $username ) ) {
-			$errors[] = 'Username is already taken.';
-		}
-
-		// Dynamic ACF field validation
 		$acf_values = [];
 		foreach ( $acf_fields_by_group as $group_key => $group_data ) {
 			foreach ( $group_data['fields'] as $field ) {
-				if ( in_array( $field['name'], $excluded_fields ) ) {
-					continue;
-				}
+				if ( in_array( $field['name'], $excluded_fields ) ) continue;
 				$field_name = $field['name'];
 				$field_label = $field['label'];
 				$field_type = $field['type'];
@@ -86,24 +67,11 @@ if ( isset( $_POST['register_submit'] ) ) {
 					$value = is_array( $value ) ? array_map( 'intval', $value ) : intval( $value );
 				}
 				$acf_values[$field_name] = $value;
-
-				// Validate required fields
 				if ( $field['required'] && ( empty( $value ) || ( is_array( $value ) && count( $value ) === 0 ) ) ) {
 					$errors[] = "$field_label is required.";
 				}
-				// // Validate specific fields
-				// if ( in_array( $field_name, [ 'phone', 'mobile' ] ) && ! empty( $value ) && ! preg_match( '/^\+?[1-9]\d{1,14}$/', $value ) ) {
-				// 	$errors[] = 'Invalid phone number format (e.g., +1234567890).';
-				// }
-				// if ( $field_name === 'linkedin__s' && ! empty( $value ) && ! filter_var( $value, FILTER_VALIDATE_URL ) ) {
-				// 	$errors[] = 'Invalid LinkedIn URL.';
-				// }
-				// if ( in_array( $field_name, [ 'current_salary', 'expected_salary' ] ) && ! empty( $value ) && ! is_numeric( $value ) ) {
-				// 	$errors[] = "$field_label must be a valid number.";
-				// }
 			}
 		}
-
 		if ( empty( $errors ) ) {
 			$user_data = [
 				'user_login' => $username,
@@ -114,31 +82,44 @@ if ( isset( $_POST['register_submit'] ) ) {
 				'role' => 'subscriber',
 			];
 			$user_id = wp_insert_user( $user_data );
-
 			if ( ! is_wp_error( $user_id ) ) {
-				// Save ACF fields to user meta
 				foreach ( $acf_values as $field_name => $value ) {
-					update_user_meta( $user_id, $field_name, $value );
+					update_field( $field_name, $value, 'user_' . $user_id );
+					error_log( 'Custom Registration: Saved ACF field ' . $field_name . ' for user ID ' . $user_id . ': Value=' . var_export( $value, true ) );
 				}
-				error_log( 'Custom Registration: User created with ID ' . $user_id . ', saved meta: ' . print_r( $acf_values, true ) );
-				// Auto-login
-				wp_clear_auth_cookie();
-				$creds = [
-					'user_login' => $username,
-					'user_password' => $user_password,
-					'remember' => true,
-				];
-				$user = wp_signon( $creds, is_ssl() );
-				if ( ! is_wp_error( $user ) ) {
-					wp_set_current_user( $user_id );
-					wp_set_auth_cookie( $user_id, true, is_ssl() );
-					error_log( 'Custom Registration: User ID ' . $user_id . ' logged in successfully' );
-					$success = 'Registration successful! Redirecting to your profile...';
-					wp_redirect( home_url( '/profile/' ) );
-					exit;
+				// Handle resume upload
+				$upload_dir = wp_upload_dir()['basedir'] . '/temp/';
+				if ( ! file_exists( $upload_dir ) ) wp_mkdir_p( $upload_dir );
+				$resume_path = $upload_dir . uniqid( 'resume_' ) . '.pdf';
+				if ( move_uploaded_file( $resume['tmp_name'], $resume_path ) ) {
+					update_user_meta( $user_id, '_temp_resume_path', $resume_path );
+					error_log( 'Custom Registration: Resume uploaded to temp path: ' . $resume_path );
 				} else {
-					$errors[] = 'Auto-login failed: ' . $user->get_error_message();
-					error_log( 'Custom Registration Error: Auto-login failed for User ID ' . $user_id . ': ' . $user->get_error_message() );
+					$errors[] = 'Failed to upload resume.';
+					error_log( 'Custom Registration: Failed to upload resume: ' . print_r( $resume, true ) );
+				}
+				if ( empty( $errors ) ) {
+					do_action( 'oru_profile_updated', $user_id );
+					wp_clear_auth_cookie();
+					$creds = [
+						'user_login' => $username,
+						'user_password' => $user_password,
+						'remember' => true,
+					];
+					$user = wp_signon( $creds, is_ssl() );
+					if ( ! is_wp_error( $user ) ) {
+						wp_set_current_user( $user_id );
+						wp_set_auth_cookie( $user_id, true, is_ssl() );
+						error_log( 'Custom Registration: User ID ' . $user_id . ' logged in successfully' );
+						wp_redirect( home_url( '/profile/?register=success' ) );
+						exit;
+					} else {
+						$errors[] = 'Auto-login failed: ' . $user->get_error_message();
+						error_log( 'Custom Registration Error: Auto-login failed for User ID ' . $user_id . ': ' . $user->get_error_message() );
+						wp_delete_user( $user_id );
+					}
+				} else {
+					wp_delete_user( $user_id );
 				}
 			} else {
 				$errors[] = $user_id->get_error_message();
@@ -147,11 +128,8 @@ if ( isset( $_POST['register_submit'] ) ) {
 		}
 	}
 }
-
 ob_end_flush();
-
 get_header();
-
 ?>
 
 <?php 
@@ -175,20 +153,27 @@ get_header();
 	</div>
 </div>
 
+<style>
+.button:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+</style>
+
 <div class="post-single__body prose py-double 2xl:py-single px-half mx-auto lg:px-0 fade-up">
 	<?php if ( ! empty( $errors ) ) : ?>
 		<?php foreach ( $errors as $error ) : ?>
 			<div class="alert-solid alert-solid--danger">
-				<?php echo $error; ?>
+				<?php echo esc_html( $error ); ?>
 			</div>
 		<?php endforeach; ?>
 	<?php endif; ?>
-	<?php if ( $success ) : ?>
+	<?php if ( isset( $_GET['register'] ) && $_GET['register'] === 'success' ) : ?>
 		<div class="alert-solid alert-solid--success">
-			<?php echo $success; ?>
+			Registration successful! Redirecting to your profile...
 		</div>
 	<?php endif; ?>
-	<form method="post" action="" class="form form--register space-y-4">
+	<form method="post" action="" class="form form--register space-y-4" enctype="multipart/form-data">
 		<fieldset class="form__fieldset bg-[#f5f5f5] dark:bg-[#222222] p-single mb-half">
 			<div class="form__field-wrapper form__field-wrapper--first_name">
 				<label class="form__label form__label--first_name" for="register_first_name">First Name <span class="text-red-500">*</span></label>
@@ -208,15 +193,12 @@ get_header();
 			</div>
 		</fieldset>
 		<?php
-		// Render ACF fields by group
 		foreach ( $acf_fields_by_group as $group_key => $group_data ) {
 			?>
 			<fieldset class="form__fieldset bg-[#f5f5f5] dark:bg-[#222222] p-single mb-half">
 				<?php
 				foreach ( $group_data['fields'] as $field ) {
-					if ( in_array( $field['name'], $excluded_fields ) ) {
-						continue; // Skip excluded fields
-					}
+					if ( in_array( $field['name'], $excluded_fields ) ) continue;
 					$field_name = $field['name'];
 					$field_label = $field['label'];
 					$field_type = $field['type'];
@@ -359,7 +341,7 @@ get_header();
 									'hide_empty' => false,
 								] );
 								if ( is_wp_error( $terms ) || empty( $terms ) ) {
-									error_log( 'No terms found for taxonomy: ' . $taxonomy );
+									error_log( 'Custom Registration: No terms found for taxonomy ' . $taxonomy );
 									?>
 									<p>No options available for <?php echo esc_html( $field_label ); ?>.</p>
 									<?php
@@ -412,7 +394,7 @@ get_header();
 											class="form__field form__field--<?php echo esc_attr( $field_name ); ?>">
 										<?php foreach ( $terms as $term ) : ?>
 											<option value="<?php echo esc_attr( $term->term_id ); ?>" <?php echo is_array( $value ) && in_array( $term->term_id, $value ) ? 'selected' : ''; ?>>
-												<?php echo esc_html( $term->name ); ?>
+												<?php echo esc_html( $field_label ); ?>
 											</option>
 										<?php endforeach; ?>
 									</select>
@@ -429,7 +411,13 @@ get_header();
 			<?php
 		}
 		?>
-		
+		<fieldset class="form__fieldset bg-[#f5f5f5] dark:bg-[#222222] p-single mb-half">
+			<div class="form__field-wrapper form__field-wrapper--resume">
+				<label class="form__label form__label--resume" for="register_resume">Resume (PDF) <span class="text-red-500">*</span></label>
+				<p class="text-sm text-red-500 mt-0 mb-2">No resume uploaded. Please upload a PDF resume.</p>
+				<input class="form__field form__field--resume form__field--upload" type="file" name="resume" id="register_resume" accept="application/pdf" required />
+			</div>
+		</fieldset>
 		<?php wp_nonce_field( 'custom_register', '_wpnonce' ); ?>
 		<input type="hidden" name="register_submit" value="1" />
 		<div class="text-center space-y-2">
@@ -437,16 +425,23 @@ get_header();
 			<div class="text-sm mt-2">Already have an account? <a href="<?php echo esc_url( home_url( '/login/' ) ); ?>" class="no-underline">Log in</a></div>
 		</div>
 	</form>
-</div>
-
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-	const form = document.querySelector('.form.form--register');
-	const submitButton = document.getElementById('register_submit');
-	const emailInput = document.getElementById('register_user_email');
-	
-	if (form && submitButton) {
+	<script>
+	document.addEventListener('DOMContentLoaded', function () {
+		const form = document.querySelector('.form.form--register');
+		const submitButton = document.getElementById('register_submit');
+		const emailInput = document.getElementById('register_user_email');
+		const resumeInput = document.getElementById('register_resume');
+		let isSubmitting = false;
+		if (!form || !submitButton || !emailInput || !resumeInput) {
+			console.error('Register form elements missing');
+			return;
+		}
 		form.addEventListener('submit', function (event) {
+			if (isSubmitting) {
+				event.preventDefault();
+				console.warn('Form submission blocked: already submitting');
+				return;
+			}
 			let errors = [];
 			if (!emailInput.value) {
 				errors.push('Email is required');
@@ -464,16 +459,19 @@ document.addEventListener('DOMContentLoaded', function () {
 			if (!document.getElementById('register_last_name').value) {
 				errors.push('Last name is required');
 			}
+			if (!resumeInput.files.length) {
+				errors.push('Resume is required');
+			} else if (resumeInput.files[0].type !== 'application/pdf') {
+				errors.push('Resume must be a PDF file');
+			} else if (resumeInput.files[0].size > 5 * 1024 * 1024) {
+				errors.push('Resume file size must be less than 5MB');
+			}
 			<?php
-			// Dynamic client-side validation for ACF fields
 			foreach ( $acf_fields_by_group as $group_key => $group_data ) {
 				foreach ( $group_data['fields'] as $field ) {
-					if ( in_array( $field['name'], $excluded_fields ) ) {
-						continue;
-					}
+					if ( in_array( $field['name'], $excluded_fields ) ) continue;
 					$field_name = $field['name'];
 					$field_label = $field['label'];
-					$field_type = $field['type'];
 					$required = $field['required'] ? 'true' : 'false';
 					?>
 					const <?php echo esc_js( $field_name ); ?>Input = document.getElementById('<?php echo 'register_' . esc_js( $field_name ); ?>');
@@ -489,20 +487,21 @@ document.addEventListener('DOMContentLoaded', function () {
 				console.error('Client-side validation errors: ', errors);
 				alert('Please fix the following errors:\n' + errors.join('\n'));
 			} else {
-				console.log('Form submission attempted with email: ' + emailInput.value);
+				isSubmitting = true;
+				console.log('Form submission triggered with email: ' + emailInput.value);
 				console.log('Form data: ', new FormData(form));
 				submitButton.disabled = true;
 				submitButton.value = 'Submitting...';
+				submitButton.classList.add('opacity-50', 'cursor-not-allowed');
 			}
 		});
-	}
-
-	<?php if ( $success ) : ?>
+		<?php if ( isset( $_GET['register'] ) && $_GET['register'] === 'success' ) : ?>
 		setTimeout(function() {
 			window.location.href = '<?php echo esc_url( home_url( '/profile/' ) ); ?>';
 		}, 1000);
-	<?php endif; ?>
-});
-</script>
+		<?php endif; ?>
+	});
+	</script>
+</div>
 
 <?php get_footer(); ?>

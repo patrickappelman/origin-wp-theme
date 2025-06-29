@@ -1,35 +1,26 @@
 <?php
 /**
  * Template Name: User Profile
- * Path: wp-content/themes/origin/page-user-profile.php
+ * Path: wp-content/themes/origin/page-profile.php
  */
-
-// Buffer output to prevent headers issues
 ob_start();
-
 error_log( 'User Profile: Page loaded' );
-
 if ( ! is_user_logged_in() ) {
 	error_log( 'User Profile: User not logged in, redirecting to login' );
-	wp_redirect( home_url( '/login/' ) );
+	wp_safe_redirect( home_url( '/login/' ) );
 	exit;
 }
-
 $current_user = wp_get_current_user();
 $field_groups = acf_get_field_groups( [ 'user_form' => 'all' ] );
 $acf_fields_by_group = [];
-$excluded_fields = [ 'candidate_id', 'id' ]; // Fields to exclude from rendering
-
+$excluded_fields = [ 'candidate_id', 'id', 'resume_url' ];
 foreach ( $field_groups as $group ) {
 	$acf_fields_by_group[$group['key']] = [
 		'title' => $group['title'],
 		'fields' => acf_get_fields( $group['key'] ),
 	];
 }
-
 $errors = [];
-$success = '';
-
 if ( isset( $_POST['profile_submit'] ) ) {
 	error_log( 'User Profile: Form submission detected with POST: ' . print_r( $_POST, true ) );
 	if ( ! wp_verify_nonce( $_POST['_wpnonce'], 'custom_profile' ) ) {
@@ -39,29 +30,25 @@ if ( isset( $_POST['profile_submit'] ) ) {
 		$first_name = sanitize_text_field( $_POST['first_name'] ?? '' );
 		$last_name = sanitize_text_field( $_POST['last_name'] ?? '' );
 		$user_email = sanitize_email( $_POST['user_email'] ?? '' );
-
-		// Validation for core fields
-		if ( empty( $first_name ) ) {
-			$errors[] = 'First name is required.';
+		$resume = $_FILES['resume'] ?? null;
+		$resume_url = get_user_meta( $current_user->ID, 'resume_url', true );
+		if ( empty( $first_name ) ) $errors[] = 'First name is required.';
+		if ( empty( $last_name ) ) $errors[] = 'Last name is required.';
+		if ( $user_email !== $current_user->user_email ) $errors[] = 'Email cannot be changed.';
+		if ( empty( $resume_url ) && ( ! $resume || $resume['error'] === UPLOAD_ERR_NO_FILE ) ) {
+			$errors[] = 'Resume is required when no resume is uploaded.';
 		}
-		if ( empty( $last_name ) ) {
-			$errors[] = 'Last name is required.';
+		if ( $resume && $resume['error'] !== UPLOAD_ERR_NO_FILE ) {
+			if ( $resume['type'] !== 'application/pdf' ) {
+				$errors[] = 'Resume must be a PDF file.';
+			} elseif ( $resume['size'] > 5 * 1024 * 1024 ) {
+				$errors[] = 'Resume file size must be less than 5MB.';
+			}
 		}
-		if ( empty( $user_email ) ) {
-			$errors[] = 'Email is required.';
-		} elseif ( ! is_email( $user_email ) ) {
-			$errors[] = 'Invalid email format.';
-		} elseif ( $user_email !== $current_user->user_email && email_exists( $user_email ) ) {
-			$errors[] = 'Email is already registered.';
-		}
-
-		// Dynamic ACF field validation
 		$acf_values = [];
 		foreach ( $acf_fields_by_group as $group_key => $group_data ) {
 			foreach ( $group_data['fields'] as $field ) {
-				if ( in_array( $field['name'], $excluded_fields ) ) {
-					continue;
-				}
+				if ( in_array( $field['name'], $excluded_fields ) ) continue;
 				$field_name = $field['name'];
 				$field_label = $field['label'];
 				$field_type = $field['type'];
@@ -76,14 +63,11 @@ if ( isset( $_POST['profile_submit'] ) ) {
 					$value = is_array( $value ) ? array_map( 'intval', $value ) : intval( $value );
 				}
 				$acf_values[$field_name] = $value;
-
-				// Validate required fields
 				if ( $field['required'] && ( empty( $value ) || ( is_array( $value ) && count( $value ) === 0 ) ) ) {
 					$errors[] = "$field_label is required.";
 				}
 			}
 		}
-
 		if ( empty( $errors ) ) {
 			$user_data = [
 				'ID' => $current_user->ID,
@@ -92,14 +76,28 @@ if ( isset( $_POST['profile_submit'] ) ) {
 				'user_email' => $user_email,
 			];
 			$user_id = wp_update_user( $user_data );
-
 			if ( ! is_wp_error( $user_id ) ) {
-				// Save ACF fields to user meta
 				foreach ( $acf_values as $field_name => $value ) {
 					update_user_meta( $current_user->ID, $field_name, $value );
+					error_log( 'User Profile: Saved ACF field ' . $field_name . ' for user ID ' . $current_user->ID . ': Result=' . var_export( $value, true ) );
 				}
-				error_log( 'User Profile: User ID ' . $current_user->ID . ' updated, saved meta: ' . print_r( $acf_values, true ) );
-				$success = 'Profile updated successfully!';
+				if ( $resume && $resume['error'] !== UPLOAD_ERR_NO_FILE ) {
+					$upload_dir = wp_upload_dir()['basedir'] . '/temp/';
+					if ( ! file_exists( $upload_dir ) ) wp_mkdir_p( $upload_dir );
+					$resume_path = $upload_dir . uniqid( 'resume_' ) . '.pdf';
+					if ( move_uploaded_file( $resume['tmp_name'], $resume_path ) ) {
+						update_user_meta( $current_user->ID, '_temp_resume_path', $resume_path );
+						error_log( 'User Profile: Resume uploaded to temp path: ' . $resume_path );
+					} else {
+						$errors[] = 'Failed to upload resume.';
+						error_log( 'User Profile: Failed to upload resume: ' . print_r( $resume, true ) );
+					}
+				}
+				if ( empty( $errors ) ) {
+					do_action( 'oru_profile_updated', $current_user->ID );
+					wp_safe_redirect( home_url( '/profile/?profile_update=success' ) );
+					exit;
+				}
 			} else {
 				$errors[] = $user_id->get_error_message();
 				error_log( 'User Profile Error: ' . $user_id->get_error_message() );
@@ -107,11 +105,8 @@ if ( isset( $_POST['profile_submit'] ) ) {
 		}
 	}
 }
-
 ob_end_flush();
-
 get_header();
-
 ?>
 
 <?php 
@@ -135,20 +130,27 @@ get_header();
 	</div>
 </div>
 
+<style>
+.button:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+</style>
+
 <div class="post-single__body prose py-double 2xl:py-single px-half mx-auto lg:px-0 fade-up">
 	<?php if ( ! empty( $errors ) ) : ?>
 		<?php foreach ( $errors as $error ) : ?>
 			<div class="alert-solid alert-solid--danger">
-				<?php echo $error; ?>
+				<?php echo esc_html( $error ); ?>
 			</div>
 		<?php endforeach; ?>
 	<?php endif; ?>
-	<?php if ( $success ) : ?>
+	<?php if ( isset( $_GET['profile_update'] ) && $_GET['profile_update'] === 'success' ) : ?>
 		<div class="alert-solid alert-solid--success">
-			<?php echo $success; ?>
+			Profile updated successfully!
 		</div>
 	<?php endif; ?>
-	<form method="post" action="" class="form form--profile space-y-4">
+	<form method="post" action="" class="form form--profile space-y-4" enctype="multipart/form-data">
 		<fieldset class="form__fieldset bg-[#f5f5f5] dark:bg-[#222222] p-single mb-half">
 			<div class="form__field-wrapper form__field-wrapper--first_name">
 				<label class="form__label form__label--first_name" for="profile_first_name">First Name <span class="text-red-500">*</span></label>
@@ -160,19 +162,16 @@ get_header();
 			</div>
 			<div class="form__field-wrapper form__field-wrapper--user_email">
 				<label class="form__label form__label--user_email" for="profile_user_email">Email Address <span class="text-red-500">*</span></label>
-				<input class="form__field form__field--user_email" type="email" name="user_email" id="profile_user_email" placeholder="e.g. john@smith.com" required value="<?php echo esc_attr( $current_user->user_email ); ?>" />
+				<input class="form__field form__field--user_email" type="email" name="user_email" id="profile_user_email" placeholder="e.g. john@smith.com" readonly value="<?php echo esc_attr( $current_user->user_email ); ?>" />
 			</div>
 		</fieldset>
 		<?php
-		// Render ACF fields by group
 		foreach ( $acf_fields_by_group as $group_key => $group_data ) {
 			?>
 			<fieldset class="form__fieldset bg-[#f5f5f5] dark:bg-[#222222] p-single mb-half">
 				<?php
 				foreach ( $group_data['fields'] as $field ) {
-					if ( in_array( $field['name'], $excluded_fields ) ) {
-						continue; // Skip excluded fields
-					}
+					if ( in_array( $field['name'], $excluded_fields ) ) continue;
 					$field_name = $field['name'];
 					$field_label = $field['label'];
 					$field_type = $field['type'];
@@ -386,7 +385,43 @@ get_header();
 			<?php
 		}
 		?>
-		
+		<?php $resume_url = get_user_meta( $current_user->ID, 'resume_url', true ); ?>
+		<fieldset class="form__fieldset bg-[#f5f5f5] dark:bg-[#222222] p-single mb-half">
+			<div class="form__field-wrapper form__field-wrapper--resume">
+				<label class="form__label form__label--resume">Resume (PDF) <span class="text-red-500">*</span></label>
+				<?php if ( $resume_url ) : ?>
+					<?php
+					$parts = explode( '/', rtrim( $resume_url, '/' ) );
+					$attachment_id = end( $parts );
+					$candidate_id = count( $parts ) >= 3 ? $parts[count( $parts ) - 3] : '';
+					if ( ctype_digit( $candidate_id ) && ctype_digit( $attachment_id ) ) {
+						$download_url = wp_nonce_url( add_query_arg( [ 'action' => 'download_resume' ], home_url() ), 'download_resume' );
+						?>
+						<p class="text-sm not-prose mt-5"><a href="<?php echo esc_url( $download_url ); ?>" class="button download-resume text-sm mb-2">Download Your Resume</a></p>
+						<button type="button" class="hs-collapse-toggle button button--outline inline-flex items-center gap-x-2 text-sm" id="hs-basic-collapse" aria-expanded="false" aria-controls="profile_upload_new_resume" data-hs-collapse="#profile_upload_new_resume">
+							Upload New Resume
+							<svg class="hs-collapse-open:rotate-180 shrink-0 size-4 text-white" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+								<path d="m6 9 6 6 6-6"></path>
+							</svg>
+						</button>
+						<div id="profile_upload_new_resume" class="hs-collapse hidden w-full overflow-hidden transition-[height] duration-300" aria-labelledby="hs-basic-collapse">
+							<div class="mt-5">
+								<p class="text-gray-500 dark:text-neutral-400">
+									<input class="form__field form__field--resume form__field--upload" type="file" name="resume" id="profile_resume" accept="application/pdf" <?php echo empty( $resume_url ) ? 'required' : ''; ?> />
+								</p>
+							</div>
+						</div>
+					<?php
+					} else {
+						error_log( 'User Profile: Invalid resume_url format for user ID ' . $current_user->ID . ': ' . $resume_url );
+					}
+					?>
+				<?php else : ?>
+					<p class="text-sm text-red-500 mt-0 mb-2">No resume uploaded. Please upload a PDF resume.</p>
+					<input class="form__field form__field--resume form__field--upload" type="file" name="resume" id="profile_resume" accept="application/pdf" <?php echo empty( $resume_url ) ? 'required' : ''; ?> />
+				<?php endif; ?>
+			</div>
+		</fieldset>
 		<?php wp_nonce_field( 'custom_profile', '_wpnonce' ); ?>
 		<input type="hidden" name="profile_submit" value="1" />
 		<div class="text-center space-y-2">
@@ -394,38 +429,46 @@ get_header();
 			<div class="text-sm mt-2"><a href="<?php echo esc_url( wp_logout_url( home_url( '/login/' ) ) ); ?>" class="no-underline">Log out</a></div>
 		</div>
 	</form>
-</div>
-
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-	const form = document.querySelector('.form.form--profile');
-	const submitButton = document.getElementById('profile_submit');
-	const emailInput = document.getElementById('profile_user_email');
-	
-	if (form && submitButton) {
+	<script>
+	try {
+		const form = document.querySelector('.form.form--profile');
+		const submitButton = document.getElementById('profile_submit');
+		const resumeInput = document.getElementById('profile_resume');
+		const downloadButton = document.querySelector('.download-resume');
+		let isSubmitting = false;
+		if (!form || !submitButton || !resumeInput) {
+			console.error('Profile form elements missing');
+			throw new Error('Form elements missing');
+		}
 		form.addEventListener('submit', function (event) {
-			let errors = [];
-			if (!emailInput.value) {
-				errors.push('Email is required');
-			} else if (!/\S+@\S+\.\S+/.test(emailInput.value)) {
-				errors.push('Email is invalid');
+			if (isSubmitting) {
+				event.preventDefault();
+				console.warn('Form submission blocked: already submitting');
+				return;
 			}
+			let errors = [];
 			if (!document.getElementById('profile_first_name').value) {
 				errors.push('First name is required');
 			}
 			if (!document.getElementById('profile_last_name').value) {
 				errors.push('Last name is required');
 			}
+			if (resumeInput.hasAttribute('required') && !resumeInput.files.length) {
+				errors.push('Resume is required when no resume is uploaded');
+			}
+			if (resumeInput.files.length) {
+				if (resumeInput.files[0].type !== 'application/pdf') {
+					errors.push('Resume must be a PDF file');
+				} else if (resumeInput.files[0].size > 5 * 1024 * 1024) {
+					errors.push('Resume file size must be less than 5MB');
+				}
+			}
 			<?php
-			// Dynamic client-side validation for ACF fields
 			foreach ( $acf_fields_by_group as $group_key => $group_data ) {
 				foreach ( $group_data['fields'] as $field ) {
-					if ( in_array( $field['name'], $excluded_fields ) ) {
-						continue;
-					}
+					if ( in_array( $field['name'], $excluded_fields ) ) continue;
 					$field_name = $field['name'];
 					$field_label = $field['label'];
-					$field_type = $field['type'];
 					$required = $field['required'] ? 'true' : 'false';
 					?>
 					const <?php echo esc_js( $field_name ); ?>Input = document.getElementById('<?php echo 'profile_' . esc_js( $field_name ); ?>');
@@ -441,14 +484,18 @@ document.addEventListener('DOMContentLoaded', function () {
 				console.error('Client-side validation errors: ', errors);
 				alert('Please fix the following errors:\n' + errors.join('\n'));
 			} else {
-				console.log('Form submission attempted with email: ' + emailInput.value);
+				isSubmitting = true;
+				console.log('Profile form submission triggered');
 				console.log('Form data: ', new FormData(form));
 				submitButton.disabled = true;
 				submitButton.value = 'Submitting...';
+				submitButton.classList.add('opacity-50', 'cursor-not-allowed');
 			}
 		});
+	} catch (error) {
+		console.error('Profile form script error: ', error);
 	}
-});
-</script>
+	</script>
+</div>
 
 <?php get_footer(); ?>
