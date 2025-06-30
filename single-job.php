@@ -24,38 +24,38 @@ global $post;
 		</div>
 	</header>
 	<?php
-		$arr_job_status = array(
-			'In-progress' => array(
+		$arr_job_status = [
+			'In-progress' => [
 				'alert-type' => 'success',
 				'can-apply' => true,
 				'msg' => 'This job is now accepting applications.'
-			),
-			'Filled' => array(
+			],
+			'Filled' => [
 				'alert-type' => 'danger',
 				'can-apply' => false,
 				'msg' => 'This job has been filled.'
-			),
-			'Cancelled' => array(
+			],
+			'Cancelled' => [
 				'alert-type' => 'danger',
 				'can-apply' => false,
 				'msg' => 'This job is no longer available.'
-			),
-			'Declined' => array(
+			],
+			'Declined' => [
 				'alert-type' => 'danger',
 				'can-apply' => false,
 				'msg' => 'This job is no longer available.'
-			),
-			'Inactive' => array(
+			],
+			'Inactive' => [
 				'alert-type' => 'danger',
 				'can-apply' => false,
 				'msg' => 'This job is no longer available.'
-			),
-			'Submitted by client' => array(
+			],
+			'Submitted by client' => [
 				'alert-type' => 'warning',
 				'can-apply' => false,
 				'msg' => 'This job is no longer available.'
-			),
-		);
+			],
+		];
 		
 		$job_status = get_field( "job_opening_status" );
 	?>
@@ -113,12 +113,7 @@ global $post;
 									$arr_location["city"] = get_field( "city" );
 								}
 
-								// if ( !empty( get_field( "state" ) ) ) {
-								//   $arr_location["state"] = get_field( "state" );
-								// }
-
 								if ( !empty( $arr_country_terms ) ) {
-									// $arr_location["country"] = $arr_country_terms[0]->name;
 									$arr_location["country"] = "<a class='hover:text-gold' href='/jobs/?country=" . $arr_country_terms[0]->slug . "'>" . $arr_country_terms[0]->name . "</a>";
 								}
 
@@ -147,9 +142,6 @@ global $post;
 									foreach ($arr_industry_terms as $industry_term) {
 										$arr_industries[] = "<a class='hover:text-gold' href='/jobs/?industry=" . $industry_term->slug . "'>" . $industry_term->name . "</a>";
 									}
-								}
-
-								if ( !empty( $arr_industry_terms ) ) {
 									$industries = implode(", ", $arr_industries);
 								}
 
@@ -167,9 +159,6 @@ global $post;
 									foreach ($arr_sector_terms as $sector_term) {
 										$arr_sectors[] = "<a class='hover:text-gold' href='/jobs/?sector=" . $sector_term->slug . "'>" . $sector_term->name . "</a>";
 									}
-								}
-
-								if ( !empty( $arr_sector_terms ) ) {
 									$sectors = implode(", ", $arr_sectors);
 								}
 
