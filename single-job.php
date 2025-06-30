@@ -235,8 +235,10 @@ global $post;
 					<?php endif; ?>
 					<?php if ( ! is_user_logged_in() ) : ?>
 						<p class="mb-half"><?php esc_html_e( 'Please log in or create an account to apply for this job.', 'textdomain' ); ?></p>
-						<a href="<?php echo esc_url( wp_login_url( get_permalink() . '#Apply' ) ); ?>" class="button mr-2.5 mb-2.5"><?php esc_html_e( 'Log In', 'textdomain' ); ?></a>
-						<a href="<?php echo esc_url( wp_registration_url() . '?redirect_to=' . urlencode( get_permalink() . '#Apply' ) ); ?>" class="button button--outline mr-2.5 mb-2.5"><?php esc_html_e( 'Create Account', 'textdomain' ); ?></a>
+
+						
+						<a href="<?php echo home_url( '/login/' ) . "?redirect_to=" . urlencode( $_SERVER['REQUEST_SCHEME'] . '://' . $_SERVER['HTTP_HOST'] . strtok( $_SERVER["REQUEST_URI"], '?' ) . "#Apply" ); ?>" class="button mr-2.5 mb-2.5"><?php esc_html_e( 'Log In', 'textdomain' ); ?></a>
+						<a href="<?php echo home_url( '/register/' ) . "?redirect_to=" . urlencode( $_SERVER['REQUEST_SCHEME'] . '://' . $_SERVER['HTTP_HOST'] . strtok( $_SERVER["REQUEST_URI"], '?' ) . "#Apply" ); ?>" class="button button--outline mr-2.5 mb-2.5"><?php esc_html_e( 'Create Account', 'textdomain' ); ?></a>
 					<?php elseif ( empty( $zoho_candidate_id ) ) : ?>
 						<p class="mb-half"><?php esc_html_e( 'Please complete your profile before applying.', 'textdomain' ); ?></p>
 						<a href="<?php echo esc_url( home_url( '/profile/?redirect_to=' . urlencode( get_permalink() . '#Apply' ) ) ); ?>" class="button button--outline mr-2.5 mb-2.5"><?php esc_html_e( 'Complete Profile', 'textdomain' ); ?></a>
