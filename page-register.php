@@ -22,6 +22,17 @@ if ( is_user_logged_in() ) {
 	exit;
 }
 
+// Retrieve reCAPTCHA keys from Contact Form 7 settings
+$wpcf7_options = get_option( 'wpcf7' );
+$recaptcha_keys = isset( $wpcf7_options['recaptcha'] ) ? $wpcf7_options['recaptcha'] : [];
+$recaptcha_site_key = ! empty( $recaptcha_keys ) ? key( $recaptcha_keys ) : '';
+$recaptcha_secret_key = ! empty( $recaptcha_keys ) ? reset( $recaptcha_keys ) : '';
+error_log( 'Custom Registration: reCAPTCHA site key=' . ( $recaptcha_site_key ?: 'not set' ) . ', secret key=' . ( $recaptcha_secret_key ? '[set]' : 'not set' ) );
+
+if ( empty( $recaptcha_site_key ) || empty( $recaptcha_secret_key ) ) {
+	error_log( 'Custom Registration: reCAPTCHA keys not found in wpcf7 option' );
+}
+
 $field_groups = acf_get_field_groups( [ 'user_form' => 'all' ] );
 $acf_fields_by_group = [];
 $excluded_fields = [ 'candidate_id', 'id', 'resume_url', 'cover_letter_url' ];
@@ -38,128 +49,168 @@ if ( isset( $_POST['register_submit'] ) ) {
 	if ( ! wp_verify_nonce( $_POST['_wpnonce'], 'custom_register' ) ) {
 		$errors[] = 'Invalid or expired form submission.';
 		error_log( 'Custom Registration: Invalid nonce' );
+	} elseif ( empty( $recaptcha_site_key ) || empty( $recaptcha_secret_key ) ) {
+		$errors[] = 'reCAPTCHA configuration error. Please contact support.';
+		error_log( 'Custom Registration: Missing reCAPTCHA keys' );
 	} else {
-		$first_name = sanitize_text_field( $_POST['first_name'] ?? '' );
-		$last_name = sanitize_text_field( $_POST['last_name'] ?? '' );
-		$user_email = sanitize_email( $_POST['user_email'] ?? '' );
-		$user_password = $_POST['user_password'] ?? '';
-		$username = sanitize_user( $user_email, true );
-		$resume = $_FILES['resume'] ?? null;
-		$cover_letter = $_FILES['cover_letter'] ?? null;
-		// Validation
-		if ( empty( $first_name ) ) $errors[] = 'First name is required.';
-		if ( empty( $last_name ) ) $errors[] = 'Last name is required.';
-		if ( empty( $user_email ) ) $errors[] = 'Email is required.';
-		elseif ( ! is_email( $user_email ) ) $errors[] = 'Invalid email format.';
-		elseif ( email_exists( $user_email ) ) $errors[] = 'Email is already registered.';
-		if ( empty( $user_password ) ) $errors[] = 'Password is required.';
-		elseif ( strlen( $user_password ) < 8 ) $errors[] = 'Password must be at least 8 characters.';
-		if ( username_exists( $username ) ) $errors[] = 'Username is already taken.';
-		if ( ! $resume || $resume['error'] === UPLOAD_ERR_NO_FILE ) {
-			$errors[] = 'Resume is required.';
-		} elseif ( $resume['type'] !== 'application/pdf' ) {
-			$errors[] = 'Resume must be a PDF file.';
-		} elseif ( $resume['size'] > 5 * 1024 * 1024 ) {
-			$errors[] = 'Resume file size must be less than 5MB.';
-		}
-		if ( $cover_letter && $cover_letter['error'] !== UPLOAD_ERR_NO_FILE ) {
-			if ( $cover_letter['type'] !== 'application/pdf' ) {
-				$errors[] = 'Cover letter must be a PDF file.';
-			} elseif ( $cover_letter['size'] > 5 * 1024 * 1024 ) {
-				$errors[] = 'Cover letter file size must be less than 5MB.';
-			}
-		}
-		$acf_values = [];
-		foreach ( $acf_fields_by_group as $group_key => $group_data ) {
-			foreach ( $group_data['fields'] as $field ) {
-				if ( in_array( $field['name'], $excluded_fields ) ) continue;
-				$field_name = $field['name'];
-				$field_label = $field['label'];
-				$field_type = $field['type'];
-				$value = isset( $_POST[$field_name] ) ? $_POST[$field_name] : '';
-				if ( $field_type === 'text' || $field_type === 'url' || $field_type === 'number' ) {
-					$value = sanitize_text_field( $value );
-				} elseif ( $field_type === 'textarea' ) {
-					$value = sanitize_textarea_field( $value );
-				} elseif ( $field_type === 'select' ) {
-					$value = is_array( $value ) ? array_map( 'sanitize_text_field', $value ) : sanitize_text_field( $value );
-				} elseif ( $field_type === 'taxonomy' ) {
-					$value = is_array( $value ) ? array_map( 'intval', $value ) : intval( $value );
-				}
-				$acf_values[$field_name] = $value;
-				if ( $field['required'] && ( empty( $value ) || ( is_array( $value ) && count( $value ) === 0 ) ) ) {
-					$errors[] = "$field_label is required.";
+		// Verify reCAPTCHA token
+		$recaptcha_token = isset( $_POST['g-recaptcha-response'] ) ? sanitize_text_field( $_POST['g-recaptcha-response'] ) : '';
+		error_log( 'Custom Registration: reCAPTCHA token=' . ( $recaptcha_token ? '[present]' : 'missing' ) );
+		if ( empty( $recaptcha_token ) ) {
+			$errors[] = 'reCAPTCHA verification failed. Please try again.';
+			error_log( 'Custom Registration: Missing reCAPTCHA token' );
+		} else {
+			$recaptcha_response = wp_remote_post( 'https://www.google.com/recaptcha/api/siteverify', [
+				'body' => [
+					'secret' => $recaptcha_secret_key,
+					'response' => $recaptcha_token,
+					'remoteip' => $_SERVER['REMOTE_ADDR'],
+				],
+			]);
+			if ( is_wp_error( $recaptcha_response ) ) {
+				$errors[] = 'reCAPTCHA verification failed. Please try again.';
+				error_log( 'Custom Registration: reCAPTCHA API error: ' . $recaptcha_response->get_error_message() );
+			} else {
+				$recaptcha_data = json_decode( wp_remote_retrieve_body( $recaptcha_response ), true );
+				error_log( 'Custom Registration: reCAPTCHA verification response: ' . print_r( $recaptcha_data, true ) );
+				if ( ! isset( $recaptcha_data['success'] ) || ! $recaptcha_data['success'] || $recaptcha_data['score'] < 0.5 || $recaptcha_data['action'] !== 'register' ) {
+					$errors[] = 'reCAPTCHA verification failed. Please try again.';
+					error_log( 'Custom Registration: reCAPTCHA verification failed: ' . print_r( $recaptcha_data, true ) );
+				} else {
+					error_log( 'Custom Registration: reCAPTCHA verification succeeded: score=' . $recaptcha_data['score'] );
 				}
 			}
 		}
+
 		if ( empty( $errors ) ) {
-			$user_data = [
-				'user_login' => $username,
-				'user_email' => $user_email,
-				'user_pass' => $user_password,
-				'first_name' => $first_name,
-				'last_name' => $last_name,
-				'role' => 'subscriber',
-			];
-			$user_id = wp_insert_user( $user_data );
-			if ( ! is_wp_error( $user_id ) ) {
-				foreach ( $acf_values as $field_name => $value ) {
-					update_field( $field_name, $value, 'user_' . $user_id );
-					error_log( 'Custom Registration: Saved ACF field ' . $field_name . ' for user ID ' . $user_id . ': Value=' . var_export( $value, true ) );
+			$first_name = sanitize_text_field( $_POST['first_name'] ?? '' );
+			$last_name = sanitize_text_field( $_POST['last_name'] ?? '' );
+			$user_email = sanitize_email( $_POST['user_email'] ?? '' );
+			$user_password = $_POST['user_password'] ?? '';
+			$username = sanitize_user( $user_email, true );
+			$resume = $_FILES['resume'] ?? null;
+			$cover_letter = $_FILES['cover_letter'] ?? null;
+			// Validation
+			if ( empty( $first_name ) ) $errors[] = 'First name is required.';
+			if ( empty( $last_name ) ) $errors[] = 'Last name is required.';
+			if ( empty( $user_email ) ) $errors[] = 'Email is required.';
+			elseif ( ! is_email( $user_email ) ) $errors[] = 'Invalid email format.';
+			elseif ( email_exists( $user_email ) ) $errors[] = 'Email is already registered.';
+			if ( empty( $user_password ) ) $errors[] = 'Password is required.';
+			elseif ( strlen( $user_password ) < 8 ) $errors[] = 'Password must be at least 8 characters.';
+			if ( username_exists( $username ) ) $errors[] = 'Username is already taken.';
+			if ( ! $resume || $resume['error'] === UPLOAD_ERR_NO_FILE ) {
+				$errors[] = 'Resume is required.';
+			} elseif ( $resume['type'] !== 'application/pdf' ) {
+				$errors[] = 'Resume must be a PDF file.';
+			} elseif ( $resume['size'] > 5 * 1024 * 1024 ) {
+				$errors[] = 'Resume file size must be less than 5MB.';
+			}
+			if ( $cover_letter && $cover_letter['error'] !== UPLOAD_ERR_NO_FILE ) {
+				if ( $cover_letter['type'] !== 'application/pdf' ) {
+					$errors[] = 'Cover letter must be a PDF file.';
+				} elseif ( $cover_letter['size'] > 5 * 1024 * 1024 ) {
+					$errors[] = 'Cover letter file size must be less than 5MB.';
 				}
-				$upload_dir = wp_upload_dir()['basedir'] . '/temp/';
-				if ( ! file_exists( $upload_dir ) ) wp_mkdir_p( $upload_dir );
-				if ( $resume && $resume['error'] !== UPLOAD_ERR_NO_FILE ) {
-					$resume_path = $upload_dir . uniqid( 'resume_' ) . '.pdf';
-					if ( move_uploaded_file( $resume['tmp_name'], $resume_path ) ) {
-						update_user_meta( $user_id, '_temp_resume_path', $resume_path );
-						error_log( 'Custom Registration: Resume uploaded to temp path: ' . $resume_path );
-					} else {
-						$errors[] = 'Failed to upload resume.';
-						error_log( 'Custom Registration: Failed to upload resume: ' . print_r( $resume, true ) );
+			}
+			$acf_values = [];
+			foreach ( $acf_fields_by_group as $group_key => $group_data ) {
+				foreach ( $group_data['fields'] as $field ) {
+					if ( in_array( $field['name'], $excluded_fields ) ) continue;
+					$field_name = $field['name'];
+					$field_label = $field['label'];
+					$field_type = $field['type'];
+					$value = isset( $_POST[$field_name] ) ? $_POST[$field_name] : '';
+					if ( $field_type === 'text' || $field_type === 'url' || $field_type === 'number' ) {
+						$value = sanitize_text_field( $value );
+					} elseif ( $field_type === 'textarea' ) {
+						$value = sanitize_textarea_field( $value );
+					} elseif ( $field_type === 'select' ) {
+						$value = is_array( $value ) ? array_map( 'sanitize_text_field', $value ) : sanitize_text_field( $value );
+					} elseif ( $field_type === 'taxonomy' ) {
+						$value = is_array( $value ) ? array_map( 'intval', $value ) : intval( $value );
+					}
+					$acf_values[$field_name] = $value;
+					if ( $field['required'] && ( empty( $value ) || ( is_array( $value ) && count( $value ) === 0 ) ) ) {
+						$errors[] = "$field_label is required.";
 					}
 				}
-				if ( $cover_letter && $cover_letter['error'] !== UPLOAD_ERR_NO_FILE ) {
-					$cover_letter_path = $upload_dir . uniqid( 'cover_letter_' ) . '.pdf';
-					if ( move_uploaded_file( $cover_letter['tmp_name'], $cover_letter_path ) ) {
-						update_user_meta( $user_id, '_temp_cover_letter_path', $cover_letter_path );
-						error_log( 'Custom Registration: Cover letter uploaded to temp path: ' . $cover_letter_path );
-					} else {
-						$errors[] = 'Failed to upload cover letter.';
-						error_log( 'Custom Registration: Failed to upload cover letter: ' . print_r( $cover_letter, true ) );
+			}
+			if ( empty( $errors ) ) {
+				$user_data = [
+					'user_login' => $username,
+					'user_email' => $user_email,
+					'user_pass' => $user_password,
+					'first_name' => $first_name,
+					'last_name' => $last_name,
+					'role' => 'subscriber',
+				];
+				$user_id = wp_insert_user( $user_data );
+				if ( ! is_wp_error( $user_id ) ) {
+					foreach ( $acf_values as $field_name => $value ) {
+						update_field( $field_name, $value, 'user_' . $user_id );
+						error_log( 'Custom Registration: Saved ACF field ' . $field_name . ' for user ID ' . $user_id . ': Value=' . var_export( $value, true ) );
 					}
-				}
-				if ( empty( $errors ) ) {
-					do_action( 'oru_profile_updated', $user_id );
-					wp_clear_auth_cookie();
-					$creds = [
-						'user_login' => $username,
-						'user_password' => $user_password,
-						'remember' => true,
-					];
-					$user = wp_signon( $creds, is_ssl() );
-					if ( ! is_wp_error( $user ) ) {
-						wp_set_current_user( $user_id );
-						wp_set_auth_cookie( $user_id, true, is_ssl() );
-						error_log( 'Custom Registration: User ID ' . $user_id . ' logged in successfully, redirecting to ' . $redirect_url );
-						wp_safe_redirect( $redirect_url . ( strpos( $redirect_url, '?' ) === false ? '?' : '&' ) . 'register=success' );
-						exit;
+					$upload_dir = wp_upload_dir()['basedir'] . '/temp/';
+					if ( ! file_exists( $upload_dir ) ) wp_mkdir_p( $upload_dir );
+					if ( $resume && $resume['error'] !== UPLOAD_ERR_NO_FILE ) {
+						$resume_path = $upload_dir . uniqid( 'resume_' ) . '.pdf';
+						if ( move_uploaded_file( $resume['tmp_name'], $resume_path ) ) {
+							update_user_meta( $user_id, '_temp_resume_path', $resume_path );
+							error_log( 'Custom Registration: Resume uploaded to temp path: ' . $resume_path );
+						} else {
+							$errors[] = 'Failed to upload resume.';
+							error_log( 'Custom Registration: Failed to upload resume: ' . print_r( $resume, true ) );
+						}
+					}
+					if ( $cover_letter && $cover_letter['error'] !== UPLOAD_ERR_NO_FILE ) {
+						$cover_letter_path = $upload_dir . uniqid( 'cover_letter_' ) . '.pdf';
+						if ( move_uploaded_file( $cover_letter['tmp_name'], $cover_letter_path ) ) {
+							update_user_meta( $user_id, '_temp_cover_letter_path', $cover_letter_path );
+							error_log( 'Custom Registration: Cover letter uploaded to temp path: ' . $cover_letter_path );
+						} else {
+							$errors[] = 'Failed to upload cover letter.';
+							error_log( 'Custom Registration: Failed to upload cover letter: ' . print_r( $cover_letter, true ) );
+						}
+					}
+					if ( empty( $errors ) ) {
+						do_action( 'oru_profile_updated', $user_id );
+						wp_clear_auth_cookie();
+						$creds = [
+							'user_login' => $username,
+							'user_password' => $user_password,
+							'remember' => true,
+						];
+						$user = wp_signon( $creds, is_ssl() );
+						if ( ! is_wp_error( $user ) ) {
+							wp_set_current_user( $user_id );
+							wp_set_auth_cookie( $user_id, true, is_ssl() );
+							error_log( 'Custom Registration: User ID ' . $user_id . ' logged in successfully, redirecting to ' . $redirect_url );
+							wp_safe_redirect( $redirect_url . ( strpos( $redirect_url, '?' ) === false ? '?' : '&' ) . 'register=success' );
+							exit;
+						} else {
+							$errors[] = 'Auto-login failed: ' . $user->get_error_message();
+							error_log( 'Custom Registration Error: Auto-login failed for User ID ' . $user_id . ': ' . $user->get_error_message() );
+							wp_delete_user( $user_id );
+						}
 					} else {
-						$errors[] = 'Auto-login failed: ' . $user->get_error_message();
-						error_log( 'Custom Registration Error: Auto-login failed for User ID ' . $user_id . ': ' . $user->get_error_message() );
 						wp_delete_user( $user_id );
 					}
 				} else {
-					wp_delete_user( $user_id );
+					$errors[] = $user_id->get_error_message();
+					error_log( 'Custom Registration Error: ' . $user_id->get_error_message() );
 				}
-			} else {
-				$errors[] = $user_id->get_error_message();
-				error_log( 'Custom Registration Error: ' . $user_id->get_error_message() );
 			}
 		}
 	}
 }
 ob_end_flush();
+
+// Enqueue reCAPTCHA v3 script
+if ( ! empty( $recaptcha_site_key ) ) {
+	wp_enqueue_script( 'google-recaptcha', 'https://www.google.com/recaptcha/api.js?render=' . esc_js( $recaptcha_site_key ), [], null, true );
+	wp_add_inline_script( 'google-recaptcha', 'const recaptchaSiteKey = "' . esc_js( $recaptcha_site_key ) . '";' );
+}
 get_header();
 ?>
 
@@ -340,7 +391,7 @@ get_header();
 									</select>
 								<?php else : ?>
 									<select id="<?php echo 'register_' . esc_attr( $field_name ); ?>" 
-											name="<?php echo esc_attr( $name ); ?>" 
+											name="<?php echo esc_attr( $field_name ); ?>" 
 											data-hs-select='{
 												"placeholder": "<?php echo esc_attr( $field['instructions'] ?: 'Choose' ); ?>",
 												"toggleTag": "<button type=\"button\" aria-expanded=\"false\"></button>",
@@ -456,6 +507,7 @@ get_header();
 				<input class="form__field form__field--cover_letter form__field--upload" type="file" name="cover_letter" id="register_cover_letter" accept="application/pdf" />
 			</div>
 		</fieldset>
+		<input type="hidden" name="g-recaptcha-response" id="g-recaptcha-response" />
 		<?php wp_nonce_field( 'custom_register', '_wpnonce' ); ?>
 		<input type="hidden" name="register_submit" value="1" />
 		<div class="text-center space-y-2">
@@ -470,17 +522,29 @@ get_header();
 		const emailInput = document.getElementById('register_user_email');
 		const resumeInput = document.getElementById('register_resume');
 		const coverLetterInput = document.getElementById('register_cover_letter');
+		const recaptchaInput = document.getElementById('g-recaptcha-response');
 		let isSubmitting = false;
-		if (!form || !submitButton || !emailInput || !resumeInput) {
+		if (!form || !submitButton || !emailInput || !resumeInput || !recaptchaInput) {
 			console.error('Register form elements missing');
 			return;
 		}
+		if (typeof grecaptcha === 'undefined') {
+			console.error('reCAPTCHA script not loaded');
+			submitButton.disabled = true;
+			submitButton.classList.add('opacity-50', 'cursor-not-allowed');
+			return;
+		}
+		grecaptcha.ready(function() {
+			submitButton.disabled = false;
+			submitButton.classList.remove('opacity-50', 'cursor-not-allowed');
+		});
 		form.addEventListener('submit', function (event) {
 			if (isSubmitting) {
 				event.preventDefault();
 				console.warn('Form submission blocked: already submitting');
 				return;
 			}
+			event.preventDefault();
 			let errors = [];
 			if (!emailInput.value) {
 				errors.push('Email is required');
@@ -529,17 +593,27 @@ get_header();
 			}
 			?>
 			if (errors.length > 0) {
-				event.preventDefault();
 				console.error('Client-side validation errors: ', errors);
 				alert('Please fix the following errors:\n' + errors.join('\n'));
-			} else {
+				return;
+			}
+			grecaptcha.execute(recaptchaSiteKey, { action: 'register' }).then(function(token) {
+				recaptchaInput.value = token;
 				isSubmitting = true;
-				console.log('Form submission triggered with email: ' + emailInput.value);
+				console.log('reCAPTCHA token generated: ' + token);
 				console.log('Form data: ', new FormData(form));
 				submitButton.disabled = true;
 				submitButton.value = 'Submitting...';
 				submitButton.classList.add('opacity-50', 'cursor-not-allowed');
-			}
+				form.submit();
+			}).catch(function(error) {
+				console.error('reCAPTCHA error: ', error);
+				alert('reCAPTCHA verification failed. Please try again.');
+				isSubmitting = false;
+				submitButton.disabled = false;
+				submitButton.value = 'Create Your Account';
+				submitButton.classList.remove('opacity-50', 'cursor-not-allowed');
+			});
 		});
 		<?php if ( isset( $_GET['register'] ) && $_GET['register'] === 'success' ) : ?>
 		setTimeout(function() {
