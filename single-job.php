@@ -16,9 +16,9 @@ global $post;
 				<div class="hero__meta hero__meta--top"></div>
 			<h1 class="job-single__title reverse text-display-5 w-full"><?php the_title(); ?></h1>
 			<div class="hero__meta hero__meta--bottom">
-				<time datetime="<?php echo get_the_date("Y-m-d"); ?>">
+				<time datetime="<?php echo get_the_date('Y-m-d'); ?>">
 					<i class="fa-solid fa-calendar-days" alt="Published On"></i>
-					Posted on <?php echo get_the_date("F j, Y"); ?>
+					Posted on <?php echo get_the_date('F j, Y'); ?>
 				</time>
 			</div>
 		</div>
@@ -57,14 +57,14 @@ global $post;
 			],
 		];
 		
-		$job_status = get_field( "job_opening_status" );
+		$job_status = get_field( 'job_opening_status' );
 	?>
 	<div class="layout gap-double xl:gap-double xl:pb-double pb-double 2xl:pb-single pt-half flex w-full flex-col md:pt-0 lg:flex-row-reverse">
 		<aside class="job-single__sidebar sticky__sidebar md:py-triple xl:py-double 2xl:py-single relative w-full py-0 !pb-0 lg:w-1/2">
 			<div class="job-single__details sticky__sidebar-details p-single text-gray-default dark:text-white-default bg-[#f5f5f5] dark:bg-[#222222]">
 				<?php if ( !$arr_job_status[$job_status]['can-apply'] ) { ?>
 				<div class="job-single__status mb-half">
-					<div class="alert-soft <?php echo "alert-soft--" . $arr_job_status[$job_status]['alert-type'] ?>" role="alert" tabindex="-1" aria-labelledby="job-status-label">
+					<div class="alert-soft <?php echo 'alert-soft--' . $arr_job_status[$job_status]['alert-type'] ?>" role="alert" tabindex="-1" aria-labelledby="job-status-label">
 						<span id="job-status-label" class="font-bold">Job Status:</span> <?php echo $arr_job_status[$job_status]['msg'] ?>
 					</div>
 				</div>
@@ -109,8 +109,8 @@ global $post;
 								$arr_location = [];
 								$location = "";
 								
-								if ( !empty( get_field( "city" ) ) ) {
-									$arr_location["city"] = get_field( "city" );
+								if ( !empty( get_field( 'city' ) ) ) {
+									$arr_location["city"] = get_field( 'city' );
 								}
 
 								if ( !empty( $arr_country_terms ) ) {
@@ -121,7 +121,7 @@ global $post;
 									$location = implode(", ", $arr_location);
 								}
 
-								if ( get_field( "remote_job" ) ) {
+								if ( get_field( 'remote_job' ) ) {
 									$location = "Remote";
 								}
 
@@ -170,21 +170,21 @@ global $post;
 						<dt>Employment Type</dt>
 						<dd>
 							<i class="fa-solid fa-fw fa-briefcase" alt="Employment Type"></i>
-							<?php echo get_field( "job_type" ); ?>
+							<?php echo get_field( 'job_type' ); ?>
 						</dd>
 					</div>
 					<div class="col-span-2">
 						<dt>Salary</dt>
 						<dd>
 							<i class="fa-solid fa-fw fa-money-bills" alt="Salary"></i>
-							<?php echo "<div>" . get_field( "salary" ) . "</div>"; ?>
+							<?php echo "<div>" . get_field( 'salary' ) . "</div>"; ?>
 						</dd>
 					</div>
 				</dl>
 				<div>
-					<?php if ( $arr_job_status[$job_status]['can-apply'] ) { ?>
-					<a href="#Apply" class="button mr-2.5"><i class="fa-solid fa-pen-to-square"></i> Apply Now</a>
-					<?php } ?>
+					<?php if ( $arr_job_status[$job_status]['can-apply'] ) : ?>
+						<a href="#Apply" class="button mr-2.5 mb-2.5">Apply Now</a>
+					<?php endif; ?>
 					<a href="/jobs/" class="button button--outline">View more jobs</a>
 				</div>
 			</div>
@@ -193,8 +193,8 @@ global $post;
 		<section class="job-single__description sticky__content md:py-triple xl:py-double 2xl:py-single relative w-full py-0 !pb-0 lg:w-1/2">
 			<h2 class="mb-single 2xl:mb-half">Job Description</h2>
 			<div class="prose pb-single">
-					<?php the_content(); ?>
-					<a id="Apply" name="Apply"></a>
+				<?php the_content(); ?>
+				<a id="Apply" name="Apply"></a>
 			</div>
 			<?php if ( $arr_job_status[$job_status]['can-apply'] ) { ?>
 			<div class="not-prose job-single__application p-single text-gray-default dark:text-white-default bg-[#f5f5f5] dark:bg-[#222222]">
