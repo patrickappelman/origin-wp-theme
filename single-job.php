@@ -13,7 +13,7 @@ global $post;
 <article class="job-single">
 	<header class="job-single__header hero hero--job">
 		<div class="hero__container fade-up">
-				<div class="hero__meta hero__meta--top"></div>
+			<div class="hero__meta hero__meta--top"></div>
 			<h1 class="job-single__title reverse text-display-5 w-full"><?php the_title(); ?></h1>
 			<div class="hero__meta hero__meta--bottom">
 				<time datetime="<?php echo get_the_date('Y-m-d'); ?>">
@@ -58,17 +58,39 @@ global $post;
 		];
 		
 		$job_status = get_field( 'job_opening_status' );
+		$zoho_job_id = get_field( 'id' );
+		$user_id = get_current_user_id();
+		$zoho_candidate_id = $user_id ? get_user_meta( $user_id, 'id', true ) : '';
+		$has_applied = false;
+		$application_status = '';
+
+		if ( $user_id && $zoho_candidate_id && $zoho_job_id && $arr_job_status[$job_status]['can-apply'] ) {
+			global $wpdb;
+			$table_name = $wpdb->prefix . 'job_applications';
+			$application_status = $wpdb->get_var( $wpdb->prepare(
+				"SELECT zoho_application_status FROM $table_name WHERE zoho_candidate_id = %d AND zoho_job_id = %d",
+				$zoho_candidate_id,
+				$zoho_job_id
+			) );
+			$has_applied = ! empty( $application_status );
+		}
 	?>
 	<div class="layout gap-double xl:gap-double xl:pb-double pb-double 2xl:pb-single pt-half flex w-full flex-col md:pt-0 lg:flex-row-reverse">
 		<aside class="job-single__sidebar sticky__sidebar md:py-triple xl:py-double 2xl:py-single relative w-full py-0 !pb-0 lg:w-1/2">
 			<div class="job-single__details sticky__sidebar-details p-single text-gray-default dark:text-white-default bg-[#f5f5f5] dark:bg-[#222222]">
-				<?php if ( !$arr_job_status[$job_status]['can-apply'] ) { ?>
-				<div class="job-single__status mb-half">
-					<div class="alert-soft <?php echo 'alert-soft--' . $arr_job_status[$job_status]['alert-type'] ?>" role="alert" tabindex="-1" aria-labelledby="job-status-label">
-						<span id="job-status-label" class="font-bold">Job Status:</span> <?php echo $arr_job_status[$job_status]['msg'] ?>
+				<?php if ( !$arr_job_status[$job_status]['can-apply'] ) : ?>
+					<div class="job-single__status mb-half">
+						<div class="alert-soft <?php echo 'alert-soft--' . $arr_job_status[$job_status]['alert-type'] ?>" role="alert" tabindex="-1" aria-labelledby="job-status-label">
+							<span id="job-status-label" class="font-bold">Job Status:</span> <?php echo $arr_job_status[$job_status]['msg'] ?>
+						</div>
 					</div>
-				</div>
-				<?php } ?>
+				<?php else : ?>
+					<?php if ( $has_applied ) : ?>
+						<div class="alert-soft alert-soft--success mb-half" role="alert">
+							<strong>Application Status:</strong> Applied
+						</div>
+					<?php endif; ?>
+				<?php endif; ?>
 				<h2 class="job-single__details-title mb-single 2xl:mb-half">
 					Job Details
 				</h2>
@@ -183,9 +205,15 @@ global $post;
 				</dl>
 				<div>
 					<?php if ( $arr_job_status[$job_status]['can-apply'] ) : ?>
-						<a href="#Apply" class="button mr-2.5 mb-2.5">Apply Now</a>
+						<?php if ( ! $has_applied ) : ?>
+							<a href="#Apply" class="button mr-2.5 mb-2.5">Apply Now</a>
+							<a href="/jobs/" class="button button--outline">View more jobs</a>
+						<?php else : ?>
+							<a href="/jobs/" class="button">View more jobs</a>
+						<?php endif; ?>
+					<?php else : ?>
+						<a href="/jobs/" class="button">View more jobs</a>
 					<?php endif; ?>
-					<a href="/jobs/" class="button button--outline">View more jobs</a>
 				</div>
 			</div>
 		</aside>
@@ -196,11 +224,39 @@ global $post;
 				<?php the_content(); ?>
 				<a id="Apply" name="Apply"></a>
 			</div>
-			<?php if ( $arr_job_status[$job_status]['can-apply'] ) { ?>
-			<div class="not-prose job-single__application p-single text-gray-default dark:text-white-default bg-[#f5f5f5] dark:bg-[#222222]">
-				<h2 class="job-single__details-title mb-single 2xl:mb-half">Apply Now</h2>
-			</div>
-			<?php } ?>
+			<?php if ( $arr_job_status[$job_status]['can-apply'] && ! $has_applied ) : ?>
+				<div class="not-prose job-single__application p-single text-gray-default dark:text-white-default bg-[#f5f5f5] dark:bg-[#222222]">
+					<h2 class="job-single__details-title mb-half">Apply Now</h2>
+					<?php $redirect_to = isset( $_GET['redirect_to'] ) ? esc_url_raw( $_GET['redirect_to'] ) : ''; ?>
+					<?php if ( isset( $_GET['application'] ) && $_GET['application'] === 'success' ) : ?>
+						<div class="alert-soft alert-soft--success mb-half" role="alert">
+							<span class="font-bold">Success:</span> <?php esc_html_e( 'Application submitted successfully!', 'textdomain' ); ?>
+						</div>
+					<?php endif; ?>
+					<?php if ( ! is_user_logged_in() ) : ?>
+						<p class="mb-half"><?php esc_html_e( 'Please log in or create an account to apply for this job.', 'textdomain' ); ?></p>
+						<a href="<?php echo esc_url( wp_login_url( get_permalink() . '#Apply' ) ); ?>" class="button mr-2.5 mb-2.5"><?php esc_html_e( 'Log In', 'textdomain' ); ?></a>
+						<a href="<?php echo esc_url( wp_registration_url() . '?redirect_to=' . urlencode( get_permalink() . '#Apply' ) ); ?>" class="button button--outline mr-2.5 mb-2.5"><?php esc_html_e( 'Create Account', 'textdomain' ); ?></a>
+					<?php elseif ( empty( $zoho_candidate_id ) ) : ?>
+						<p class="mb-half"><?php esc_html_e( 'Please complete your profile before applying.', 'textdomain' ); ?></p>
+						<a href="<?php echo esc_url( home_url( '/profile/?redirect_to=' . urlencode( get_permalink() . '#Apply' ) ) ); ?>" class="button button--outline mr-2.5 mb-2.5"><?php esc_html_e( 'Complete Profile', 'textdomain' ); ?></a>
+					<?php else : ?>
+						<p class="mb-half leading-normal"><?php esc_html_e( 'Clicking the button below will submit your resume and candidate profile for this position.', 'textdomain' ); ?></p>
+						<form id="oru-job-application-form" method="post">
+							<input type="hidden" name="action" value="oru_submit_application">
+							<input type="hidden" name="job_id" value="<?php echo esc_attr( get_the_ID() ); ?>">
+							<input type="hidden" name="nonce" value="" id="application-nonce">
+							<?php if ( $redirect_to ) : ?>
+								<input type="hidden" name="redirect_to" value="<?php echo esc_attr( $redirect_to ); ?>">
+							<?php endif; ?>
+							<p>
+								<button type="submit" class="button mr-2.5 mb-2.5" data-submitting-text="<?php esc_attr_e( 'Submitting...', 'textdomain' ); ?>"><i class="fa-solid fa-pen-to-square"></i> <?php esc_html_e( 'Submit Application', 'textdomain' ); ?></button>
+							</p>
+						</form>
+						<a href="<?php echo esc_url( home_url( '/profile/?redirect_to=' . urlencode( get_permalink() . '#Apply' ) ) ); ?>" class="text-sm text-gold hover:text-gold-dark"><?php esc_html_e( 'Update Your Candidate Profile', 'textdomain' ); ?></a>
+					<?php endif; ?>
+				</div>
+			<?php endif; ?>
 		</section>
 	</div>
 </article>

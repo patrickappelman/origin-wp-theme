@@ -7,7 +7,7 @@ ob_start();
 error_log( 'User Profile: Page loaded' );
 
 // Handle redirect_to parameter for unauthenticated users
-$redirect_url = isset( $_GET['redirect_to'] ) ? esc_url_raw( $_GET['redirect_to'] ) : home_url( '/profile/' );
+$redirect_url = isset( $_GET['redirect_to'] ) ? esc_url_raw( $_GET['redirect_to'] ) : home_url( '/profile/?profile_update=success' );
 if ( parse_url( $redirect_url, PHP_URL_HOST ) !== parse_url( home_url(), PHP_URL_HOST ) ) {
 	$redirect_url = home_url( '/profile/' );
 	$url_suffix = '';
@@ -126,7 +126,7 @@ if ( isset( $_POST['profile_submit'] ) ) {
 				}
 				if ( empty( $errors ) ) {
 					do_action( 'oru_profile_updated', $current_user->ID );
-					wp_safe_redirect( home_url( '/profile/?profile_update=success' ) );
+					wp_safe_redirect( $redirect_url );
 					exit;
 				}
 			} else {
