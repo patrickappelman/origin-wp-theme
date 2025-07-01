@@ -1,6 +1,7 @@
 @import url("https://fonts.googleapis.com/css2?family=Bitter:ital,wght@0,100..900;1,100..900&family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap");
 @import "tailwindcss";
-@import "../node_modules/preline/variants.css";
+@import "preline/variants.css";
+@import "flag-icons/css/flag-icons.css";
 @plugin "@tailwindcss/forms";
 @plugin "@tailwindcss/typography";
 

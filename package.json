@@ -28,6 +28,7 @@
 	},
 	"dependencies": {
 		"countup.js": "^2.8.2",
+		"flag-icons": "^7.5.0",
 		"preline": "^3.0.1"
 	}
 }
