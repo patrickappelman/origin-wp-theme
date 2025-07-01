@@ -200,21 +200,21 @@
 					'field' => 'slug',
 					'terms' => $arr_language_slugs,
 				],
-				[
-					'taxonomy' => 'country',
-					'field' => 'slug',
-					'terms' => $arr_country_slugs,
-				],
-				[
-					'taxonomy' => 'industry',
-					'field' => 'slug',
-					'terms' => $arr_industry_slugs,
-				],
-				[
-					'taxonomy' => 'sector',
-					'field' => 'slug',
-					'terms' => $arr_sector_slugs,
-				],
+				// [
+				// 	'taxonomy' => 'country',
+				// 	'field' => 'slug',
+				// 	'terms' => $arr_country_slugs,
+				// ],
+				// [
+				// 	'taxonomy' => 'industry',
+				// 	'field' => 'slug',
+				// 	'terms' => $arr_industry_slugs,
+				// ],
+				// [
+				// 	'taxonomy' => 'sector',
+				// 	'field' => 'slug',
+				// 	'terms' => $arr_sector_slugs,
+				// ],
 			],
 			'meta_query' => [
 				'relation' => 'AND',
