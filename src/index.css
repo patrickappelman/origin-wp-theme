@@ -523,7 +523,7 @@
 	}
 
 	.hero--small {
-		@apply py-40;
+		@apply py-20 md:py-25 lg:py-30;
 	}
 
 	.layout {
@@ -543,7 +543,7 @@
 	}
 
 	.button {
-		@apply bg-gold hover:bg-gold-medium border-gold hover:border-gold-medium px-button-x py-button-y inline-block border-1 leading-tight text-white transition-colors duration-300 hover:text-white cursor-pointer;
+		@apply bg-gold hover:bg-gold-medium border-gold hover:border-gold-medium px-button-x py-button-y inline-block border-1 leading-tight text-white transition-colors duration-300 hover:text-white cursor-pointer rounded-lg;
 	}
 
 	.button.button--outline {
@@ -638,10 +638,10 @@
 	.tag-list__tag {
 		display: inline-block;
 		background: #eee;
-		font-size: calc(0.7 * var(--text-base));
+		font-size: calc(0.85 * var(--text-base));
 		padding: calc(var(--spacing-button-y) * 0.5) calc(var(--spacing-button-x) * 0.5);
 
-		@apply hover:bg-gold-dark hover:text-white-bold;
+		@apply hover:bg-gold-dark hover:text-white-bold rounded-md;
 
 		@variant dark {
 			background-color: #444;
@@ -700,7 +700,7 @@
 	/* Job Listing */
 
 	.job-listing {
-		@apply mb-single last:mb-0;
+		@apply mb-single last:mb-0 rounded-xl;
 
 		&:last-child {
 			@apply mb-0;
@@ -721,19 +721,19 @@
 }
 
 .form__field {
-	@apply py-2.5 sm:py-3 px-4 block w-full border border-gray-200 focus:border-blue-500 focus:ring-blue-500 disabled:opacity-50 disabled:pointer-events-none bg-white dark:bg-neutral-900 dark:border-neutral-700 text-gray-bold dark:text-white-bold placeholder-gray-dim dark:placeholder-white-dim dark:focus:ring-neutral-600;
+	@apply py-2.5 sm:py-3 px-4 block w-full border border-gray-200 focus:border-blue-500 focus:ring-blue-500 disabled:opacity-50 disabled:pointer-events-none bg-white dark:bg-neutral-900 dark:border-neutral-700 text-gray-bold dark:text-white-bold placeholder-gray-dim dark:placeholder-white-dim dark:focus:ring-neutral-600 rounded-md;
 
 	&.form__field--inset-l {
 		@apply ps-9;
 	}
 
 	&.form__field--upload {
-		@apply text-sm focus:z-10 disabled:opacity-50 disabled:pointer-events-none file:bg-[#f5f5f5] file:border-0 file:me-4 file:py-3 file:px-4 dark:file:bg-[#222222] dark:file:text-neutral-400;
+		@apply text-sm focus:z-10 disabled:opacity-50 disabled:pointer-events-none file:bg-[#f5f5f5] file:border-0 file:me-4 file:py-3 file:px-4 dark:file:bg-[#222222] dark:file:text-neutral-400 rounded-md file:rounded-md;
 	}
 }
 
 .form__checkbox {
-	@apply shrink-0 mt-0.5 border-gray-200 text-blue-600 focus:ring-blue-500 checked:border-blue-500 disabled:opacity-50 disabled:pointer-events-none dark:bg-neutral-900 dark:border-neutral-700 dark:checked:bg-blue-500 dark:checked:border-blue-500 dark:focus:ring-offset-gray-800;
+	@apply shrink-0 mt-0.5 border-gray-200 text-blue-600 focus:ring-blue-500 checked:border-blue-500 disabled:opacity-50 disabled:pointer-events-none dark:bg-neutral-900 dark:border-neutral-700 dark:checked:bg-blue-500 dark:checked:border-blue-500 dark:focus:ring-offset-gray-800 rounded-sm;
 }
 
 .form__checkbox-label {
@@ -741,8 +741,22 @@
 }
 
 .form__textarea {
-	@apply py-2 px-3 sm:py-3 sm:px-4 block w-full border-gray-200 focus:border-blue-500 focus:ring-blue-500 disabled:opacity-50 disabled:pointer-events-none dark:bg-neutral-900 dark:border-neutral-700 text-gray-bold dark:text-white-bold placeholder-gray-dim dark:placeholder-white-dim dark:focus:ring-neutral-600;
+	@apply py-2 px-3 sm:py-3 sm:px-4 block w-full border-gray-200 focus:border-blue-500 focus:ring-blue-500 disabled:opacity-50 disabled:pointer-events-none dark:bg-neutral-900 dark:border-neutral-700 text-gray-bold dark:text-white-bold placeholder-gray-dim dark:placeholder-white-dim dark:focus:ring-neutral-600 rounded-md;
 }
+
+.wpcf7-not-valid {
+	&.form__field,
+	&.form__textarea {
+		@apply focus:border-red-500 focus:ring-red-500;
+	}
+}
+
+/* .wpcf7-validates-as-required {
+	&.form__field,
+	&.form__textarea {
+		@apply focus:border-teal-500 focus:ring-teal-500;
+	}
+} */
 
 .form__field-wrapper {
 	@apply mb-5 last:mb-0;
@@ -764,13 +778,13 @@
 	}
 
 	input {
-		@apply shrink-0 mt-0.5 border-gray-200  text-blue-600 focus:ring-blue-500 checked:border-blue-500 disabled:opacity-50 disabled:pointer-events-none dark:bg-neutral-800 dark:border-neutral-700 dark:checked:bg-blue-500 dark:checked:border-blue-500 dark:focus:ring-offset-gray-800;
+		@apply shrink-0 mt-0.5 border-gray-200 text-blue-600 focus:ring-blue-500 checked:border-blue-500 disabled:opacity-50 disabled:pointer-events-none dark:bg-neutral-900 dark:border-neutral-700 dark:checked:bg-blue-500 dark:checked:border-blue-500 dark:focus:ring-offset-gray-800 rounded-sm;
 	}
 }
 
 .form__field-wrapper--submit input[type="Submit"] {
 	@apply transition-colors duration-300;
-	@apply py-3 px-4 inline-flex items-center gap-x-2 text-sm font-medium bg-white text-gray-bold hover:bg-gray-full hover:text-white focus:outline-hidden disabled:opacity-50 disabled:pointer-events-none cursor-pointer;
+	@apply py-3 px-4 inline-flex items-center gap-x-2 text-sm font-medium bg-white text-gray-bold hover:bg-gray-full hover:text-white focus:outline-hidden disabled:opacity-50 disabled:pointer-events-none cursor-pointer rounded-lg;
 
 	@variant dark {
 		@apply bg-neutral-900 border-neutral-700 text-white-bold hover:bg-white hover:text-gray-bold;
@@ -869,7 +883,7 @@
 }
 
 .page-numbers {
-	@apply min-h-9.5 min-w-9.5 flex justify-center items-center border border-transparent text-gray-800 hover:bg-gray-100 py-2 px-3 text-sm focus:outline-hidden focus:bg-gray-100 disabled:opacity-50 disabled:pointer-events-none dark:border-transparent dark:text-white dark:hover:bg-white/10 dark:focus:bg-white/10;
+	@apply min-h-9.5 min-w-9.5 flex justify-center items-center border border-transparent text-gray-800 hover:bg-gray-100 py-2 px-3 text-sm focus:outline-hidden focus:bg-gray-100 disabled:opacity-50 disabled:pointer-events-none dark:border-transparent dark:text-white dark:hover:bg-white/10 dark:focus:bg-white/10 rounded-md;
 }
 
 .page-numbers.current {
@@ -879,7 +893,7 @@
 /* ADVANCED SELECT */
 
 .advanced-select__search {
-	@apply block w-full sm:text-sm z-100 border-gray-200 focus:border-blue-500 focus:ring-blue-500 before:absolute before:inset-0 before:z-1 dark:bg-neutral-900 dark:border-neutral-700 dark:text-neutral-400 dark:placeholder-neutral-500 py-1.5 sm:py-2 px-3;
+	@apply block w-full sm:text-sm z-100 border-gray-200 focus:border-blue-500 focus:ring-blue-500 before:absolute before:inset-0 before:z-1 dark:bg-neutral-900 dark:border-neutral-700 dark:text-neutral-400 dark:placeholder-neutral-500 py-1.5 sm:py-2 px-3 rounded-md;
 }
 
 .advanced-select__search-wrapper {
@@ -887,7 +901,7 @@
 }
 
 .advanced-select__wrapper {
-	@apply relative bg-white ps-0.5 pe-9 min-h-11.5 flex items-center flex-wrap text-nowrap w-full border border-gray-200 text-start text-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-neutral-900 dark:border-neutral-700 dark:text-neutral-400;
+	@apply relative bg-white ps-0.5 pe-9 min-h-11.5 flex items-center flex-wrap text-nowrap w-full border border-gray-200 text-start text-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-neutral-900 dark:border-neutral-700 dark:text-neutral-400 rounded-md;
 }
 
 .advanced-select__toggle {
@@ -896,7 +910,7 @@
 }
 
 .advanced-select__dropdown {
-	@apply mt-2 max-h-72 pb-1 px-1 space-y-0.5 z-30 w-full bg-white border border-gray-200 overflow-hidden overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-gray-100 [&::-webkit-scrollbar-thumb]:bg-gray-300 dark:[&::-webkit-scrollbar-track]:bg-neutral-700 dark:[&::-webkit-scrollbar-thumb]:bg-neutral-500 dark:bg-neutral-900 dark:border-neutral-700;
+	@apply mt-2 max-h-72 pb-1 px-1 space-y-0.5 z-30 w-full bg-white border border-gray-200 overflow-hidden overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-gray-100 [&::-webkit-scrollbar-thumb]:bg-gray-300 dark:[&::-webkit-scrollbar-track]:bg-neutral-700 dark:[&::-webkit-scrollbar-thumb]:bg-neutral-500 dark:bg-neutral-900 dark:border-neutral-700 rounded-lg;
 }
 
 .advanced-select__option {

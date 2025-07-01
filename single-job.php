@@ -77,7 +77,7 @@ global $post;
 	?>
 	<div class="layout gap-double xl:gap-double xl:pb-double pb-double 2xl:pb-single pt-half flex w-full flex-col md:pt-0 lg:flex-row-reverse">
 		<aside class="job-single__sidebar sticky__sidebar md:py-triple xl:py-double 2xl:py-single relative w-full py-0 !pb-0 lg:w-1/2">
-			<div class="job-single__details sticky__sidebar-details p-single text-gray-default dark:text-white-default bg-[#f5f5f5] dark:bg-[#222222]">
+			<div class="job-single__details sticky__sidebar-details p-single text-gray-default dark:text-white-default bg-[#f5f5f5] dark:bg-[#222222] rounded-xl">
 				<?php if ( !$arr_job_status[$job_status]['can-apply'] ) : ?>
 					<div class="job-single__status mb-half">
 						<div class="alert-soft <?php echo 'alert-soft--' . $arr_job_status[$job_status]['alert-type'] ?>" role="alert" tabindex="-1" aria-labelledby="job-status-label">
@@ -225,7 +225,7 @@ global $post;
 				<a id="Apply" name="Apply"></a>
 			</div>
 			<?php if ( $arr_job_status[$job_status]['can-apply'] && ! $has_applied ) : ?>
-				<div class="not-prose job-single__application p-single text-gray-default dark:text-white-default bg-[#f5f5f5] dark:bg-[#222222]">
+				<div class="not-prose job-single__application p-single text-gray-default dark:text-white-default bg-[#f5f5f5] dark:bg-[#222222] rounded-xl">
 					<h2 class="job-single__details-title mb-half">Apply Now</h2>
 					<?php $redirect_to = isset( $_GET['redirect_to'] ) ? esc_url_raw( $_GET['redirect_to'] ) : ''; ?>
 					<?php if ( isset( $_GET['application'] ) && $_GET['application'] === 'success' ) : ?>

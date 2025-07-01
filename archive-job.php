@@ -171,11 +171,11 @@ $arr_job_status = array(
 
 <section class="layout gap-double xl:gap-double xl:pb-double pb-double 2xl:pb-single pt-half flex w-full flex-col md:pt-0 lg:flex-row-reverse">
 	<aside class="w-full lg:w-1/3 sticky__sidebar md:py-triple xl:py-double 2xl:py-single relative py-0 !pb-0">
-		<div class="job-single__details sticky__sidebar-details p-single text-gray-default dark:text-white-default bg-[#f5f5f5] dark:bg-[#222222]">
+		<div class="job-single__details sticky__sidebar-details p-single text-gray-default dark:text-white-default bg-[#f5f5f5] dark:bg-[#222222] rounded-xl">
 			<form id="jobs-filter-form" class="jobs-filter-form">
 				<div class="pb-5">
 					<label for="search-filter" class="sr-only">Search all jobs</label>
-					<input id="search-filter" name="search" type="text" class="py-2.5 text-sm sm:py-3 px-4 block w-full border-gray-200 focus:border-blue-500 focus:ring-blue-500 disabled:opacity-50 disabled:pointer-events-none dark:bg-neutral-900 dark:border-neutral-700 dark:text-neutral-400 placeholder-gray-dim dark:placeholder-white-dim dark:focus:ring-neutral-600" placeholder="Search all jobs" value="<?php echo esc_attr($search_query); ?>">
+					<input id="search-filter" name="search" type="text" class="form__field text-sm" placeholder="Search all jobs" value="<?php echo esc_attr($search_query); ?>">
 				</div>
 				<div class="pb-5">
 					<label class="text-sm sr-only" for="status-filter">Filter by Job Status</label>
