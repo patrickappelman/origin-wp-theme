@@ -2,7 +2,7 @@
 
 <section class="hero hero--large bg-[#222222] dark:bg-[#444444]">
 	<div class="hero__background">
-		<img src="https://images.unsplash.com/photo-1652707227172-aae5272f28c5?q=80&w=3652&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" alt="" />
+		<?php if ( get_the_post_thumbnail_url() ) { echo get_the_post_thumbnail(); } ?>
 	</div>
 	<div class="hero__container">
 		<h1 class="reverse text-display-5 fade-up w-full md:w-3/4 lg:w-1/2">Connecting Global Talent, Empowering Business Success</h1>
