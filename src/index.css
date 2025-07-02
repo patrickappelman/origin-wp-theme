@@ -548,7 +548,7 @@
 
 	.button.button--outline {
 		background: none;
-		@apply border-gray-dim text-gray-bold border-gray-dim dark:border-white-dim dark:text-white-bold border-1;
+		@apply text-gray-bold border-gray-dim dark:border-white-dim dark:text-white-bold border-1;
 
 		&.button--light {
 			@apply border-white-dim text-white-bold hover:text-white;
