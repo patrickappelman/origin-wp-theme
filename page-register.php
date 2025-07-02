@@ -256,7 +256,7 @@ get_header();
 		</div>
 	<?php endif; ?>
 	<form method="post" action="" class="form form--register space-y-4" enctype="multipart/form-data">
-		<fieldset class="form__fieldset bg-[#f5f5f5] dark:bg-[#222222] p-single mb-half">
+		<fieldset class="form__fieldset">
 			<div class="form__field-wrapper form__field-wrapper--first_name">
 				<label class="form__label form__label--first_name" for="register_first_name">First Name <span class="text-red-500">*</span></label>
 				<input class="form__field form__field--first_name" type="text" name="first_name" id="register_first_name" placeholder="e.g. John" required value="<?php echo isset( $_POST['first_name'] ) ? esc_attr( $_POST['first_name'] ) : ''; ?>" />
@@ -277,7 +277,7 @@ get_header();
 		<?php
 		foreach ( $acf_fields_by_group as $group_key => $group_data ) {
 			?>
-			<fieldset class="form__fieldset bg-[#f5f5f5] dark:bg-[#222222] p-single mb-half">
+			<fieldset class="form__fieldset">
 				<?php
 				foreach ( $group_data['fields'] as $field ) {
 					if ( in_array( $field['name'], $excluded_fields ) ) continue;
@@ -493,14 +493,14 @@ get_header();
 			<?php
 		}
 		?>
-		<fieldset class="form__fieldset bg-[#f5f5f5] dark:bg-[#222222] p-single mb-half">
+		<fieldset class="form__fieldset">
 			<div class="form__field-wrapper form__field-wrapper--resume">
 				<label class="form__label form__label--resume" for="register_resume">Resume (PDF) <span class="text-red-500">*</span></label>
 				<p class="text-sm text-red-500 mt-0 mb-2">No resume uploaded. Please upload a PDF resume.</p>
 				<input class="form__field form__field--resume form__field--upload" type="file" name="resume" id="register_resume" accept="application/pdf" required />
 			</div>
 		</fieldset>
-		<fieldset class="form__fieldset bg-[#f5f5f5] dark:bg-[#222222] p-single mb-half">
+		<fieldset class="form__fieldset">
 			<div class="form__field-wrapper form__field-wrapper--cover_letter">
 				<label class="form__label form__label--cover_letter" for="register_cover_letter">Cover Letter (PDF, Optional)</label>
 				<p class="text-sm text-gray-500 dark:text-neutral-400 mt-0 mb-2">No cover letter uploaded. Optionally upload a PDF cover letter.</p>

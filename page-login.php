@@ -114,7 +114,7 @@ get_header();
 		</div>
 	<?php endif; ?>
 	<form method="post" action="" class="form form--login space-y-4">
-		<fieldset class="form__fieldset bg-[#f5f5f5] dark:bg-[#222222] p-single mb-half">
+		<fieldset class="form__fieldset">
 			<div class="form__field-wrapper form__field-wrapper--user_email">
 				<label class="form__label form__label--user_email" for="login_user_email">Email Address <span class="text-red-500">*</span></label>
 				<input class="form__field form__field--user_email" type="email" name="user_email" id="login_user_email" placeholder="e.g. john@smith.com" required value="<?php echo isset( $_POST['user_email'] ) ? esc_attr( $_POST['user_email'] ) : ''; ?>" />
