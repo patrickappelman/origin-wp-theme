@@ -936,3 +936,9 @@
 .advanced-select__tag-item-remove {
 	@apply inline-flex shrink-0 justify-center items-center size-5 ms-2 rounded-full text-gray-800 bg-gray-200 hover:bg-gray-300 focus:outline-hidden focus:ring-2 focus:ring-gray-400 text-sm dark:bg-neutral-700/50 dark:hover:bg-neutral-700 dark:text-neutral-400 cursor-pointer;
 }
+
+/* HIDE RECAPTCHA */
+
+div.grecaptcha-badge {
+	@apply !opacity-0 hidden;
+}
