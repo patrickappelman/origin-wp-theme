@@ -69,6 +69,8 @@
 	--tw-prose-bold: var(--color-gray-bold);
 	--tw-prose-links: var(--color-gold);
 
+	width: 65ch;
+
 	@variant dark {
 		--tw-prose-headings: rgba(255, 255, 255, 0.87);
 		--tw-prose-body: rgba(255, 255, 255, 0.6);
@@ -764,10 +766,12 @@
 }
 
 .form__field-wrapper.form__field-wrapper--acceptance {
-	@apply mb-0 py-single lg:py-half;
-
 	label {
-		@apply text-sm font-medium text-white dark:text-white flex flex-row gap-3;
+		@apply text-sm font-medium flex flex-row gap-3;
+
+		.contact-section & {
+			@apply text-white dark:text-white mb-0 py-single lg:py-half;
+		}
 
 		a {
 			text-decoration: underline;
@@ -942,4 +946,9 @@
 
 div.grecaptcha-badge {
 	@apply !opacity-0 hidden;
+}
+
+.wpcf7-submit {
+	@apply transition-colors duration-300;
+	@apply py-3 px-4 inline-flex items-center gap-x-2 text-sm font-medium bg-gold text-white hover:bg-gold-medium hover:text-white focus:outline-hidden disabled:opacity-50 disabled:pointer-events-none cursor-pointer rounded-lg;
 }

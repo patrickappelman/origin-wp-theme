@@ -23,9 +23,19 @@
 	</div>
 </div>
 
-<div class="post-single__body prose py-double 2xl:py-single px-half mx-auto lg:px-0 pb-0 fade-up">
+<div class="post-single__body prose py-double 2xl:py-single px-half mx-auto lg:px-0 fade-up">
 	<?php the_content(); ?>
 </div>
+
+<?php $form_shortcode = get_field( 'form_shortcode' ); if ( $form_shortcode ) : ?>
+	<section id="Vacancy" class="flex items-center px-[15px] md:px-single">
+		<div class="prose mx-auto">
+			<h2 class="leading-tight" style="margin-top:0!important;">Submit Vacancy</h2>
+			<p class="leading-relaxed mb-single">Use the form below to provide details about your vacancy.</p>
+			<?php echo do_shortcode( $form_shortcode ); ?>
+		</div>
+	</section>
+<?php endif; ?>
 
 <?php include('marquee.php'); ?>
 <?php include('countup.php'); ?>

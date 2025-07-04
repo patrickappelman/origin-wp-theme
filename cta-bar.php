@@ -5,11 +5,11 @@
             <p class="leading-relaxed text-[var(--color-white-default)]">We are committed to providing the service we offer to the highest standards. Candidates who are looking for a multilingual job with languages trust us to listen to them, understand their expectations and help them to find their ideal job that can utilise their language skills.</p>
             <div>
                 <?php if ( ! is_user_logged_in() ) : ?>
-                <a href="/register/" class="button mr-1 mb-2">Get Started</a>
-                <a href="/jobs/" class="button button--outline button--light mb-2">Explore Jobs</a>
+                <a href="<?php echo home_url( "/register/" ); ?>" class="button mr-1 mb-2">Get Started</a>
+                <a href="<?php echo home_url( "/jobs/" ); ?>" class="button button--outline button--light mb-2">Explore Jobs</a>
                 <?php else : ?>
-                <a href="/jobs/" class="button mr-1 mb-2">Explore Jobs</a>
-                <a href="/profile/" class="button button--outline button--light mb-2">Update Profile</a>
+                <a href="<?php echo home_url( "/jobs/" ); ?>" class="button mr-1 mb-2">Explore Jobs</a>
+                <a href="<?php echo home_url( "/profile/" ); ?>" class="button button--outline button--light mb-2">Update Profile</a>
                 <?php endif; ?>
             </div>
             <p><a href="/candidates/" class="text-white-bold hover:underline">How our recruitment process works →</a></p>
@@ -20,10 +20,10 @@
             <h2 class="leading-tight text-[var(--color-white-bold)]">Looking for Talent?</h2>
             <p class="leading-relaxed text-[var(--color-white-default)]">For more than 50 years, Origin Recruitment has been a trusted partner to companies requiring multilingual recruitment. Whether you are looking to fill a single vacancy or recruit an entire multilingual or bilingual team, our professional recruitment service is tailored to your requirements.</p>
             <div>
-                <a target="_blank" href="https://forms.gle/hyGUfw3cvwEwfhTeA" class="button mr-1 mb-2">Post a Vacancy</a>
-                <a href="/clients/#TailoredSolutions" class="button button--outline button--light  mb-2">Get Tailored Solutions</a>
+                <a href="<?php echo home_url( "/clients/" ) ?>#Vacancy" class="button mr-1 mb-2">Post a Vacancy</a>
+                <a href="<?php echo home_url( "/clients/" ) ?>" class="button button--outline button--light  mb-2">Get Tailored Solutions</a>
             </div>
-            <p><a href="/clients/" class="text-white-bold hover:underline">Our candidate selection guarantee →</a></p>
+            <p><a href="<?php echo home_url( "/clients/" ) ?>" class="text-white-bold hover:underline">Our candidate selection guarantee →</a></p>
         </div>
     </div>
 </section>
